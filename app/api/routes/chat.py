@@ -6,8 +6,8 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.modules.preprocessing.normalizer import Normalizer
-from app.modules.extraction.llm_extractor import LLMExtractor
+from app.modules.preprocessing.normalizer import PersianTextNormalizer
+from app.modules.extraction.llm_extractor import ResumeLLMExtractor
 from app.modules.gap_analysis.analyzer import GapAnalyzer
 from app.modules.question_generation.generator import QuestionGenerator
 
@@ -44,8 +44,8 @@ class ChatResponse(BaseModel):
 # -----------------------------
 # Dependencies / services
 # -----------------------------
-normalizer = Normalizer()
-extractor = LLMExtractor()
+normalizer = PersianTextNormalizer()
+extractor = ResumeLLMExtractor()
 gap_analyzer = GapAnalyzer()
 question_generator = QuestionGenerator()
 

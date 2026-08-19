@@ -21,6 +21,8 @@ app/modules/question_generation/generator.py
 app/schemas/__init__.py
 app/schemas/chat.py
 app/schemas/resume.py
+app/services/__init__.py
+app/services/resume_service.py
 intelligent_resume_builder.egg-info/PKG-INFO
 intelligent_resume_builder.egg-info/SOURCES.txt
 intelligent_resume_builder.egg-info/dependency_links.txt
@@ -28,4 +30,7 @@ intelligent_resume_builder.egg-info/requires.txt
 intelligent_resume_builder.egg-info/top_level.txt
 tests/test_extraction.py
 tests/test_gap_analysis.py
+tests/test_llm_extractor.py
+tests/test_normalizer.py
 tests/test_preprocessing.py
+tests/test_resume_schema.py

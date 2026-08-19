@@ -97,77 +97,77 @@ INPUT TEXT:
 
         return raw_output[start : end + 1]
 
-def _parse_json(self, raw_output: str) -> dict:
-    json_text = self._extract_json_block(raw_output)
-    try:
-        return json.loads(json_text)
-    except json.JSONDecodeError as e:
-        raise LLMInvalidJSONError(f"Invalid JSON output: {e}") from e
+    def _parse_json(self, raw_output: str) -> dict:
+        json_text = self._extract_json_block(raw_output)
+        try:
+            return json.loads(json_text)
+        except json.JSONDecodeError as e:
+            raise LLMInvalidJSONError(f"Invalid JSON output: {e}") from e
 
-def _validate_schema(self, data: dict) -> ResumeSchema:
-    try:
-        return self.schema_model.model_validate(data)
-    except ValidationError as e:
-        raise LLMSchemaValidationError(f"Schema validation failed: {e}") from e
+    def _validate_schema(self, data: dict) -> ResumeSchema:
+        try:
+            return self.schema_model.model_validate(data)
+        except ValidationError as e:
+            raise LLMSchemaValidationError(f"Schema validation failed: {e}") from e
 
-def _call_llm(self, prompt: str) -> str:
-    """
-    انتظار می‌رود llm خروجی متنی بدهد.
-    برای LangChain معمولاً invoke(prompt) یا invoke(messages) استفاده می‌شود.
-    """
-    response = self.llm.invoke(prompt)
+    def _call_llm(self, prompt: str) -> str:
+        """
+        انتظار می‌رود llm خروجی متنی بدهد.
+        برای LangChain معمولاً invoke(prompt) یا invoke(messages) استفاده می‌شود.
+        """
+        response = self.llm.invoke(prompt)
 
 # سازگاری با LangChain message objects
-    if hasattr(response, "content"):
-        return response.content
+        if hasattr(response, "content"):
+            return response.content
 
-    return str(response)
+        return str(response)
 
-def extract(self, text: str) -> ResumeSchema:
-    """
-    متن را به ResumeSchema تبدیل می‌کند.
-    در صورت خطای JSON یا validation، retry انجام می‌شود.
-    """
-    prompt = self.build_prompt(text)
-    last_error: Optional[Exception] = None
+    def extract(self, text: str) -> ResumeSchema:
+        """
+        متن را به ResumeSchema تبدیل می‌کند.
+        در صورت خطای JSON یا validation، retry انجام می‌شود.
+        """
+        prompt = self.build_prompt(text)
+        last_error: Optional[Exception] = None
 
-    for attempt in range(self.max_retries + 1):
-        try:
-            raw_output = self._call_llm(prompt)
-            data = self._parse_json(raw_output)
-            return self._validate_schema(data)
+        for attempt in range(self.max_retries + 1):
+            try:
+                raw_output = self._call_llm(prompt)
+                data = self._parse_json(raw_output)
+                return self._validate_schema(data)
 
-        except (LLMInvalidJSONError, LLMSchemaValidationError, ValidationError) as e:
-            last_error = e
+            except (LLMInvalidJSONError, LLMSchemaValidationError, ValidationError) as e:
+                last_error = e
 
 # در retry، پرامپت سخت‌گیرانه‌تر می‌شود
-    prompt = self._build_retry_prompt(text, str(e))
+        prompt = self._build_retry_prompt(text, str(e))
 
-    raise LLMExtractionError(
-    f"Failed to extract resume after {self.max_retries + 1} attempts: {last_error}"
-    )
+        raise LLMExtractionError(
+        f"Failed to extract resume after {self.max_retries + 1} attempts: {last_error}"
+        )
 
-def _build_retry_prompt(self, text: str, error_message: str) -> str:
-    """
-    پرامپت اصلاحی برای retry.
-    به مدل می‌گوییم خروجی قبلی نامعتبر بوده و فقط JSON درست بدهد.
-    """
-    return f"""
-        Your previous response was invalid.
+    def _build_retry_prompt(self, text: str, error_message: str) -> str:
+        """
+        پرامپت اصلاحی برای retry.
+        به مدل می‌گوییم خروجی قبلی نامعتبر بوده و فقط JSON درست بدهد.
+        """
+        return f"""
+            Your previous response was invalid.
 
-    ERROR:
-    {error_message}
+        ERROR:
+        {error_message}
 
-    You must now return ONLY valid JSON that matches the schema.
+        You must now return ONLY valid JSON that matches the schema.
 
-    STRICT RULES:
-    - No markdown
-    - No explanation
-    - No code fences
-    - No hallucination
-    - Use only facts from the text
-    - If unsure, use null or empty values
+        STRICT RULES:
+        - No markdown
+        - No explanation
+        - No code fences
+        - No hallucination
+        - Use only facts from the text
+        - If unsure, use null or empty values
 
-    INPUT TEXT:
-    {text}
-    """.strip()
+        INPUT TEXT:
+        {text}
+        """.strip()

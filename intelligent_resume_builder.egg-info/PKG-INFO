@@ -18,5 +18,26 @@ Requires-Dist: pytest<9.0,>=8.0; extra == "dev"
 Requires-Dist: httpx<1.0,>=0.27; extra == "dev"
 Requires-Dist: ruff<1.0,>=0.6; extra == "dev"
 
-# intelligent-resume-builder
-Intelligent Persian Resume Builder
+# سامانه هوشمند رزومه‌ساز فارسی
+
+سامانه‌ای مبتنی بر FastAPI برای استخراج، تحلیل نقص، تولید سوال تکمیلی و ساخت رزومه ساخت‌یافته فارسی.
+
+## ویژگی‌ها
+- دریافت متن خام از کاربر
+- نرمال‌سازی متن فارسی
+- استخراج ساخت‌یافته با مدل زبانی
+- تحلیل نواقص و ابهام‌ها
+- تولید سوال بعدی
+- نگهداری session در حافظه
+- خروجی JSON و PDF
+
+## نیازمندی‌ها
+- Python 3.11+
+- FastAPI
+- Pydantic
+- Hazm
+- یک مدل زبانی یا سرویس LLM
+
+## نصب
+```bash
+pip install -r requirements.txt

@@ -22,11 +22,11 @@ class GapAnalyzer:
         hallucinated_facts = []
         
         # بررسی فیلدهای حساس (مثال: سوابق کاری و تحصیلات)
-        for job in self.resume.work_experiences:
-            if job.company.lower() not in self.original_text:
-                hallucinated_facts.append(f"شرکت '{job.company}' در متن ورودی یافت نشد.")
+        for job in self.resume.company_name:
+            if company_name.lower() not in self.original_text:
+                hallucinated_facts.append(f"شرکت '{company_name}' در متن ورودی یافت نشد.")
         
-        for edu in self.resume.education:
+        for edu in self.educations:
             if edu.university.lower() not in self.original_text:
                 hallucinated_facts.append(f"دانشگاه '{edu.university}' در متن ورودی یافت نشد.")
         
@@ -47,9 +47,9 @@ class GapAnalyzer:
         # سوابق کاری بدون تاریخ
         for i, job in enumerate(self.resume.work_experiences):
             if not job.start_date:
-                missing.append(f"تاریخ شروع برای سابقه کاری '{job.title}' در '{job.company}' ثبت نشده است.")
+                missing.append(f"تاریخ شروع برای سابقه کاری '{job_title}' در '{company_name}' ثبت نشده است.")
             if not job.description or len(job.description) < 10:
-                missing.append(f"توضیحات سابقه کاری '{job.title}' بسیار کوتاه یا خالی است.")
+                missing.append(f"توضیحات سابقه کاری '{job_title}' بسیار کوتاه یا خالی است.")
 
         # مهارت‌های بدون سطح تسلط
         for skill in self.resume.skills:
@@ -73,12 +73,12 @@ class GapAnalyzer:
             
         # وزن سوابق کاری (حداقل یک سابقه کامل)
         if self.resume.work_experiences:
-            valid_jobs = [j for j in self.resume.work_experiences if j.company and j.start_date]
+            valid_jobs = [j for j in self.resume.company_name if j.company_name and j.start_date]
             if valid_jobs:
                 score += 40
         
         # وزن تحصیلات
-        if self.resume.education:
+        if self.educations:
             score += 20
             
         # وزن مهارت‌ها
