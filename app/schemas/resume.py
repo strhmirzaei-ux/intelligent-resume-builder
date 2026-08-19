@@ -31,6 +31,11 @@ class DataStatus(str, Enum):
     PARTIAL = "partial"
     MISSING = "missing"
     UNVERIFIED = "unverified"
+    CONFIRMED = "confirmed"
+    AMBIGUOUS = "ambiguous"
+    CONFLICTING = "conflicting"
+    INFERRED = "inferred"
+    REJECTED = "rejected"
 
 
 # ─────────────────────────────────────────────────────
@@ -49,6 +54,7 @@ class SectionBase(BaseModel):
         default=None,
         description="متن/بخشی از متن اصلی که این داده از آن استخراج شده",
     )
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
 
 
 # ─────────────────────────────────────────────────────
@@ -153,3 +159,19 @@ class ResumeSchema(BaseModel):
     educations: List[Education] = Field(default_factory=list)
     skills: List[Skill] = Field(default_factory=list)
     projects: List[Project] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def education(self) -> List[Education]:
+        """Compatibility alias for older integrations."""
+        return self.educations
+
+    def evidence_texts(self) -> List[str]:
+        values: List[str] = []
+        sections = [self.personal_info, self.contact_info, *self.work_experiences,
+                    *self.educations, *self.skills, *self.projects]
+        for section in sections:
+            if section.source_text:
+                values.append(section.source_text)
+        return values

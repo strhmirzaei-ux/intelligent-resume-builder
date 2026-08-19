@@ -11,58 +11,84 @@ from __future__ import annotations
 import re
 from typing import List
 
-from hazm import Normalizer, sent_tokenize
+from hazm import Normalizer as HazmNormalizer, sent_tokenize
 
-# ─────────────────────────────────────────────
-# پیکربندی
-# ─────────────────────────────────────────────
-# کاراکترهای مجاز: حروف فارسی، ارقام، فاصله و علائم نگارشی پایه
-_ALLOWED_CHARS_PATTERN = re.compile(
-    r"[^\u0600-\u06FF\u0020\u200C\u200F"
-    r"0-9A-Za-z"
-    r"\.\,\;\:\!\?\؟\(\）\[\]\{\}\-\_\/\\\u0660-\u0669]"
+_PROTECTED_PATTERN = re.compile(
+    r"(?P<email>[\w.+-]+@[\w.-]+\.[A-Za-z]{2,})|"
+    r"(?P<url>https?://\S+)|"
+    r"(?P<phone>\+?\d[\d\s()-]{7,}\d)"
 )
-
-# چند فاصله‌ی پشت‌سرهم → یک فاصله
+_ALLOWED_CHARS_PATTERN = re.compile(
+    r"[^\u0600-\u06FF\u0020\u000A\u000D\u200C\u200F0-9A-Za-z"
+    r"\.\,\;\:\!\?\؟\(\)\[\]\{\}\-\_\/\\@%+#]"
+)
 _MULTI_SPACE_PATTERN = re.compile(r"[ \t]+")
+_SPACE_BEFORE_PUNCT_PATTERN = re.compile(r"\s+([.,;:!?؟)\]}])")
+_ARABIC_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩", "۰۱۲۳۴۵۶۷۸۹")
+_INFORMAL_PREFIX_SPACE = re.compile(r"\b(می|نمی)\s+(?=[\u0600-\u06FF])")
 
-# فاصله‌ی قبل از علائم نگارشی → حذف
-_SPACE_BEFORE_PUNCT_PATTERN = re.compile(r"\s+([\.,;:!?؟\)\]}])")
+
+def _placeholder(index: int) -> str:
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    value = index
+    suffix = ""
+    while True:
+        suffix = alphabet[value % len(alphabet)] + suffix
+        value = value // len(alphabet) - 1
+        if value < 0:
+            return f"ZXQPROTECTED{suffix}"
 
 
 class PersianTextNormalizer:
-    """کلاس سرویس نرمال‌سازی متون فارسی."""
+    """Normalize Persian text without destroying contact data or source meaning."""
 
     def __init__(self) -> None:
-        self._normalizer = Normalizer()
+        self._normalizer = HazmNormalizer()
 
-    # ── ۱. نرمال‌سازی پایه (hazm) ─────────────────────
     def normalize(self, text: str) -> str:
-        """نرمال‌سازی پایه: اصلاح ی/ک، نیم‌فاصله‌ها، اعراب و ..."""
-        return self._normalizer.normalize(text)
+        if not isinstance(text, str):
+            raise TypeError("text must be a string")
+        protected: dict[str, str] = {}
 
-    # ── ۲. حذف نویز و کاراکترهای غیرمجاز ──────────────
+        def protect(match: re.Match[str]) -> str:
+            token = _placeholder(len(protected))
+            protected[token] = match.group(0)
+            return token
+
+        text_with_protected_contacts = _PROTECTED_PATTERN.sub(protect, text)
+        normalized = self._normalizer.normalize(text_with_protected_contacts)
+        normalized = normalized.translate(_ARABIC_DIGITS)
+        normalized = normalized.replace("\u200e", "").replace("\u200d", "")
+        normalized = _INFORMAL_PREFIX_SPACE.sub(r"\1‌", normalized)
+        for token, value in protected.items():
+            normalized = normalized.replace(token, value)
+        return normalized
+
     def remove_noise(self, text: str) -> str:
-        """حذف نویز، کاراکترهای غیرمجاز و فاصله‌های اضافی."""
-        # نرمال‌سازی ابتدایی
-        text = self.normalize(text)
-        # حذف کاراکترهای غیرمجاز
-        text = _ALLOWED_CHARS_PATTERN.sub(" ", text)
-        # حذف چند فاصله‌ی متوالی
-        text = _MULTI_SPACE_PATTERN.sub(" ", text)
-        # حذف فاصله‌ی قبل از علائم نگارشی
-        text = _SPACE_BEFORE_PUNCT_PATTERN.sub(r"\1", text)
-        return text.strip()
+        normalized = self.normalize(text)
+        protected: dict[str, str] = {}
 
-    # ── ۳. تفکیک جملات ────────────────────────────────
+        def protect(match: re.Match[str]) -> str:
+            token = _placeholder(len(protected))
+            protected[token] = match.group(0)
+            return token
+
+        cleaned = _PROTECTED_PATTERN.sub(protect, normalized)
+        cleaned = cleaned.replace("*", " ")
+        cleaned = _ALLOWED_CHARS_PATTERN.sub(" ", cleaned)
+        cleaned = _MULTI_SPACE_PATTERN.sub(" ", cleaned)
+        cleaned = _SPACE_BEFORE_PUNCT_PATTERN.sub(r"\1", cleaned)
+        for token, value in protected.items():
+            cleaned = cleaned.replace(token, value)
+        return cleaned.strip()
+
     def split_sentences(self, text: str) -> List[str]:
-        """تفکیک متن به جملات برای تحلیل‌های بعدی."""
         cleaned = self.remove_noise(text)
-        sentences = sent_tokenize(cleaned)
-        # حذف جمله‌های خالی
-        return [s.strip() for s in sentences if s.strip()]
+        return [sentence.strip() for sentence in sent_tokenize(cleaned) if sentence.strip()]
 
-    # ── متد ترکیبی ────────────────────────────────────
     def clean_text(self, text: str) -> str:
-        """رابط اصلی: نرمال‌سازی + حذف نویز در یک قدم."""
         return self.remove_noise(text)
+
+
+# Backward-compatible public name used by the API.
+Normalizer = PersianTextNormalizer

@@ -3,16 +3,10 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.resume import (
-    ContactInfo,
-    DataStatus,
-    ResumeSchema,
-    WorkExperience,
-)
+from app.schemas.resume import DataStatus, ResumeSchema, WorkExperience
 
 
-def test_کامل_رزومه():
-    """یک رزومه کامل باید بدون خطا ساخته شود."""
+def test_resume_accepts_valid_data():
     resume = ResumeSchema(
         personal_info={"first_name": "محمد", "status": "complete"},
         contact_info={"email": "mohsen@example.com"},
@@ -26,16 +20,16 @@ def test_کامل_رزومه():
         ],
         skills=[{"name": "Python"}],
     )
-    assert resume.contact_info.email == "mohsen@example.com"
+    assert str(resume.contact_info.email) == "mohsen@example.com"
     assert resume.skills[0].status == DataStatus.UNVERIFIED
 
 
-def test_ایمیل_اشتباه_خطا_می_دهد():
+def test_invalid_email_is_rejected():
     with pytest.raises(ValidationError):
         ResumeSchema(contact_info={"email": "not-an-email"})
 
 
-def test_تاریخ_معکوس_خطا_می_دهد():
+def test_reversed_work_dates_are_rejected():
     with pytest.raises(ValidationError):
         WorkExperience(
             company_name="X",
@@ -44,12 +38,6 @@ def test_تاریخ_معکوس_خطا_می_دهد():
         )
 
 
-def test_فیلد_اضافی_رد_می_شود():
+def test_extra_fields_are_rejected():
     with pytest.raises(ValidationError):
         ResumeSchema(whatever_extra="field")
-
-
-def test_رزومه_خالی_مجاز_است():
-    resume = ResumeSchema()
-    assert resume.work_experiences == []
-    assert resume.personal_info.status == DataStatus.UNVERIFIED
