@@ -8,9 +8,13 @@ class GapAnalyzer:
     بررسی انطباق خروجی با ورودی، شناسایی نواقص و محاسبه امتیاز پوشش.
     """
 
-    def __init__(self, resume: ResumeSchema, original_text: str):
+    def __init__(
+        self,
+        resume: ResumeSchema | None = None,
+        original_text: str = "",
+    ):
         self.resume = resume
-        self.original_text = original_text.lower()
+        self.original_text = original_text
         self.deficiencies = []
 
     # --- ۱. مقایسه با متن اصلی (ضد جعل) ---
@@ -22,13 +26,20 @@ class GapAnalyzer:
         hallucinated_facts = []
         
         # بررسی فیلدهای حساس (مثال: سوابق کاری و تحصیلات)
-        for job in self.resume.company_name:
-            if company_name.lower() not in self.original_text:
-                hallucinated_facts.append(f"شرکت '{company_name}' در متن ورودی یافت نشد.")
+        if self.resume is None:
+            return ["رزومه‌ای برای تحلیل ارائه نشده است."]
+        source = self.original_text.casefold()
+        for job in self.resume.work_experiences:
+            if job.company_name and job.company_name.casefold() not in source:
+                hallucinated_facts.append(
+                    f"شرکت '{job.company_name}' در متن ورودی یافت نشد."
+                )
         
-        for edu in self.educations:
-            if edu.university.lower() not in self.original_text:
-                hallucinated_facts.append(f"دانشگاه '{edu.university}' در متن ورودی یافت نشد.")
+        for edu in self.resume.educations:
+            if edu.institution_name and edu.institution_name.casefold() not in source:
+                hallucinated_facts.append(
+                    f"مؤسسه '{edu.institution_name}' در متن ورودی یافت نشد."
+                )
         
         self.deficiencies.extend(hallucinated_facts)
         return hallucinated_facts
@@ -41,15 +52,23 @@ class GapAnalyzer:
         missing = []
         
         # اطلاعات فردی
+        if self.resume is None:
+            return ["رزومه‌ای برای تحلیل ارائه نشده است."]
         if not self.resume.personal_info.first_name or not self.resume.personal_info.last_name:
             missing.append("اطلاعات نام و نام‌خانوادگی ناقص است.")
         
         # سوابق کاری بدون تاریخ
         for i, job in enumerate(self.resume.work_experiences):
             if not job.start_date:
-                missing.append(f"تاریخ شروع برای سابقه کاری '{job_title}' در '{company_name}' ثبت نشده است.")
+                missing.append(
+                    f"تاریخ شروع برای سابقه کاری '{job.job_title or 'بدون عنوان'}' "
+                    f"در '{job.company_name or 'بدون شرکت'}' ثبت نشده است."
+                )
             if not job.description or len(job.description) < 10:
-                missing.append(f"توضیحات سابقه کاری '{job_title}' بسیار کوتاه یا خالی است.")
+                missing.append(
+                    f"توضیحات سابقه کاری '{job.job_title or 'بدون عنوان'}' "
+                    "بسیار کوتاه یا خالی است."
+                )
 
         # مهارت‌های بدون سطح تسلط
         for skill in self.resume.skills:
@@ -65,6 +84,8 @@ class GapAnalyzer:
         محاسبه درصد تکمیل رزومه بر اساس وزن فیلدها.
         وزن‌ها: اطلاعات فردی (20%)، سوابق (40%)، تحصیلات (20%)، مهارت‌ها (20%)
         """
+        if self.resume is None:
+            return 0.0
         score = 0.0
         
         # وزن اطلاعات فردی
@@ -73,12 +94,15 @@ class GapAnalyzer:
             
         # وزن سوابق کاری (حداقل یک سابقه کامل)
         if self.resume.work_experiences:
-            valid_jobs = [j for j in self.resume.company_name if j.company_name and j.start_date]
+            valid_jobs = [
+                j for j in self.resume.work_experiences
+                if j.company_name and j.job_title and j.start_date
+            ]
             if valid_jobs:
                 score += 40
         
         # وزن تحصیلات
-        if self.educations:
+        if self.resume.educations:
             score += 20
             
         # وزن مهارت‌ها
@@ -102,6 +126,21 @@ class GapAnalyzer:
             "deficiencies": self.deficiencies,
             "suggestions": self._generate_suggestions()
         }
+
+    def analyze(
+        self,
+        resume: ResumeSchema | dict | None = None,
+        original_text: str | None = None,
+    ) -> Dict[str, Any]:
+        if resume is not None:
+            self.resume = (
+                resume
+                if isinstance(resume, ResumeSchema)
+                else ResumeSchema.model_validate(resume)
+            )
+        if original_text is not None:
+            self.original_text = original_text
+        return self.run_analysis()
 
     def _generate_suggestions(self) -> List[str]:
         """تبدیل نواقص به پیشنهادات کاربردی برای کاربر."""
