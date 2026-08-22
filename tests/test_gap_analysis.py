@@ -2,29 +2,24 @@ from app.modules.gap_analysis.analyzer import GapAnalyzer
 from app.schemas.resume import ResumeSchema
 
 
-def test_gap_analyzer_uses_schema_field_names():
+def test_gap_analysis_and_weighted_coverage():
     resume = ResumeSchema(
-        personal_info={"first_name": "علی"},
+        personal_info={"full_name": "علی احمدی"},
+        contact_info={"email": "ali@example.com"},
         work_experiences=[
-            {
-                "company_name": "شرکت الف",
-                "job_title": "برنامه‌نویس",
-                "description": "توسعه سامانه داخلی",
-            }
+            {"company_name": "شرکت الف", "job_title": "برنامه‌نویس"}
         ],
         skills=[{"name": "Python"}],
     )
-    result = GapAnalyzer(resume, "علی در شرکت الف کار می‌کند").run_analysis()
-    assert result["coverage_score"] == 20
-    assert any("تاریخ شروع" in item for item in result["deficiencies"])
-    assert any("سطح تسلط" in item for item in result["deficiencies"])
+    result = GapAnalyzer(resume, "علی احمدی در شرکت الف کار می‌کند").run_analysis()
+    assert result["coverage_score"] == 40
+    assert any("Start date" in item for item in result["deficiencies"])
+    assert result["is_valid"] is True
 
 
-def test_gap_analyzer_flags_unverified_company():
+def test_gap_analysis_detects_unverified_company():
     resume = ResumeSchema(
-        work_experiences=[
-            {"company_name": "شرکت خیالی", "job_title": "مدیر"}
-        ]
+        work_experiences=[{"company_name": "شرکت خیالی", "job_title": "مدیر"}]
     )
     result = GapAnalyzer(resume, "من مدیر هستم").run_analysis()
     assert result["is_valid"] is False

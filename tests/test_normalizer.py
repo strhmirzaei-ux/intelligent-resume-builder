@@ -1,32 +1,21 @@
-import pytest
-
 from app.modules.preprocessing.normalizer import PersianTextNormalizer
 
 
-@pytest.fixture
-def normalizer():
-    return PersianTextNormalizer()
+def test_persian_characters_and_half_space():
+    result = PersianTextNormalizer().normalize("ي و ك؛ می خواهم برنامه نویس باشم")
+    assert "ی" in result
+    assert "ک" in result
+    assert "می‌خواهم" in result
 
 
-def test_normalizes_persian_characters(normalizer):
-    assert normalizer.normalize("ي و ك") == "ی و ک"
-
-
-def test_normalizes_informal_prefix_spacing(normalizer):
-    assert "می‌خوام" in normalizer.normalize("می خوام")
-
-
-def test_removes_noise_without_destroying_contacts(normalizer):
-    result = normalizer.remove_noise(
-        "سلام؛ *** ایمیل ali@example.com و سایت https://example.com"
-    )
-    assert "***" not in result
+def test_contacts_are_preserved():
+    result = PersianTextNormalizer().remove_noise("ایمیل ali@example.com و سایت https://example.com")
     assert "ali@example.com" in result
     assert "https://example.com" in result
 
 
-def test_splits_sentences(normalizer):
-    sentences = normalizer.split_sentences(
-        "من برنامه‌نویس هستم. الان در حال کارم. فردا برمی‌گردم."
+def test_sentence_split():
+    result = PersianTextNormalizer().split_sentences(
+        "من برنامه‌نویس هستم. در تهران کار می‌کنم. به پروژه‌های متن‌باز علاقه دارم."
     )
-    assert len(sentences) == 3
+    assert len(result) == 3

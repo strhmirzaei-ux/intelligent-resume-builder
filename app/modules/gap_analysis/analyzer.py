@@ -1,150 +1,88 @@
-from typing import List, Dict, Any, Optional
+from __future__ import annotations
+
 from app.schemas.resume import ResumeSchema
-import re
+
 
 class GapAnalyzer:
-    """
-    تحلیل‌گر شکاف اطلاعاتی رزومه.
-    بررسی انطباق خروجی با ورودی، شناسایی نواقص و محاسبه امتیاز پوشش.
-    """
-
-    def __init__(
-        self,
-        resume: ResumeSchema | None = None,
-        original_text: str = "",
-    ):
+    def __init__(self, resume: ResumeSchema | None = None, original_text: str = ""):
         self.resume = resume
         self.original_text = original_text
-        self.deficiencies = []
+        self.deficiencies: list[str] = []
 
-    # --- ۱. مقایسه با متن اصلی (ضد جعل) ---
-    def check_hallucination(self) -> List[str]:
-        """
-        اگر کلمه‌ای در داده‌های حساس (مثل نام شرکت یا دانشگاه) باشد که در متن اصلی نیست،
-        آن را به عنوان 'احتمال جعل' علامت می‌زند.
-        """
-        hallucinated_facts = []
-        
-        # بررسی فیلدهای حساس (مثال: سوابق کاری و تحصیلات)
+    def check_hallucination(self) -> list[str]:
         if self.resume is None:
-            return ["رزومه‌ای برای تحلیل ارائه نشده است."]
+            return ["No resume was provided."]
         source = self.original_text.casefold()
+        issues: list[str] = []
         for job in self.resume.work_experiences:
             if job.company_name and job.company_name.casefold() not in source:
-                hallucinated_facts.append(
-                    f"شرکت '{job.company_name}' در متن ورودی یافت نشد."
+                issues.append(f"Company '{job.company_name}' was not found in source text.")
+        for education in self.resume.educations:
+            if (
+                education.institution_name
+                and education.institution_name.casefold() not in source
+            ):
+                issues.append(
+                    f"Institution '{education.institution_name}' was not found in source text."
                 )
-        
-        for edu in self.resume.educations:
-            if edu.institution_name and edu.institution_name.casefold() not in source:
-                hallucinated_facts.append(
-                    f"مؤسسه '{edu.institution_name}' در متن ورودی یافت نشد."
-                )
-        
-        self.deficiencies.extend(hallucinated_facts)
-        return hallucinated_facts
+        return issues
 
-    # --- ۲. شناسایی فیلدهای خالی یا ناقص ---
-    def identify_missing_fields(self) -> List[str]:
-        """
-        شناسایی فیلدهایی که یا خالی هستند یا اطلاعات حیاتی مثل تاریخ ندارند.
-        """
-        missing = []
-        
-        # اطلاعات فردی
+    def identify_missing_fields(self) -> list[str]:
         if self.resume is None:
-            return ["رزومه‌ای برای تحلیل ارائه نشده است."]
-        if not self.resume.personal_info.first_name or not self.resume.personal_info.last_name:
-            missing.append("اطلاعات نام و نام‌خانوادگی ناقص است.")
-        
-        # سوابق کاری بدون تاریخ
-        for i, job in enumerate(self.resume.work_experiences):
-            if not job.start_date:
-                missing.append(
-                    f"تاریخ شروع برای سابقه کاری '{job.job_title or 'بدون عنوان'}' "
-                    f"در '{job.company_name or 'بدون شرکت'}' ثبت نشده است."
-                )
-            if not job.description or len(job.description) < 10:
-                missing.append(
-                    f"توضیحات سابقه کاری '{job.job_title or 'بدون عنوان'}' "
-                    "بسیار کوتاه یا خالی است."
-                )
-
-        # مهارت‌های بدون سطح تسلط
+            return ["No resume was provided."]
+        missing: list[str] = []
+        if not (
+            self.resume.personal_info.full_name
+            or (
+                self.resume.personal_info.first_name
+                and self.resume.personal_info.last_name
+            )
+        ):
+            missing.append("Full name is incomplete.")
+        for job in self.resume.work_experiences:
+            if not job.start_date and not job.start_date_raw:
+                missing.append(f"Start date is missing for '{job.job_title or 'work experience'}'.")
+            if not job.description and not job.achievements:
+                missing.append(f"Description or achievements are missing for '{job.job_title or 'work experience'}'.")
         for skill in self.resume.skills:
             if not skill.level:
-                missing.append(f"سطح تسلط برای مهارت '{skill.name}' مشخص نیست.")
-
-        self.deficiencies.extend(missing)
+                missing.append(f"Proficiency level is missing for skill '{skill.name}'.")
+        if self.resume.contact_info.email is None and self.resume.contact_info.phone is None:
+            missing.append("At least one contact method is missing.")
         return missing
 
-    # --- ۳. محاسبه امتیاز پوشش (Coverage Score) ---
     def calculate_coverage_score(self) -> float:
-        """
-        محاسبه درصد تکمیل رزومه بر اساس وزن فیلدها.
-        وزن‌ها: اطلاعات فردی (20%)، سوابق (40%)، تحصیلات (20%)، مهارت‌ها (20%)
-        """
         if self.resume is None:
             return 0.0
-        score = 0.0
-        
-        # وزن اطلاعات فردی
-        if self.resume.personal_info.first_name and self.resume.personal_info.last_name:
-            score += 20
-            
-        # وزن سوابق کاری (حداقل یک سابقه کامل)
-        if self.resume.work_experiences:
-            valid_jobs = [
-                j for j in self.resume.work_experiences
-                if j.company_name and j.job_title and j.start_date
-            ]
-            if valid_jobs:
-                score += 40
-        
-        # وزن تحصیلات
-        if self.resume.educations:
-            score += 20
-            
-        # وزن مهارت‌ها
-        if self.resume.skills:
-            score += 20
-            
-        return score
+        checks = [
+            (10, bool(self.resume.personal_info.full_name or self.resume.personal_info.first_name)),
+            (15, bool(self.resume.contact_info.email or self.resume.contact_info.phone)),
+            (30, any(j.company_name and j.job_title and (j.start_date or j.start_date_raw) for j in self.resume.work_experiences)),
+            (15, bool(self.resume.educations)),
+            (15, bool(self.resume.skills)),
+            (10, bool(self.resume.professional_summary)),
+            (5, bool(self.resume.projects or self.resume.certificates)),
+        ]
+        return float(sum(weight for weight, present in checks if present))
 
-    # --- ۴. خروجی نهایی تحلیل ---
-    def run_analysis(self) -> Dict[str, Any]:
-        """اجرای کامل تحلیل و بازگرداندن گزارش نهایی."""
-        self.deficiencies = [] # Reset
-        
+    def run_analysis(self) -> dict[str, object]:
         hallucinations = self.check_hallucination()
         missing = self.identify_missing_fields()
-        score = self.calculate_coverage_score()
-        
+        self.deficiencies = hallucinations + missing
         return {
-            "coverage_score": score,
-            "is_valid": len(hallucinations) == 0,
+            "coverage_score": self.calculate_coverage_score(),
+            "is_valid": not hallucinations,
             "deficiencies": self.deficiencies,
-            "suggestions": self._generate_suggestions()
+            "suggestions": [f"Complete or verify: {item}" for item in self.deficiencies],
         }
 
     def analyze(
         self,
         resume: ResumeSchema | dict | None = None,
         original_text: str | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         if resume is not None:
-            self.resume = (
-                resume
-                if isinstance(resume, ResumeSchema)
-                else ResumeSchema.model_validate(resume)
-            )
+            self.resume = resume if isinstance(resume, ResumeSchema) else ResumeSchema.model_validate(resume)
         if original_text is not None:
             self.original_text = original_text
         return self.run_analysis()
-
-    def _generate_suggestions(self) -> List[str]:
-        """تبدیل نواقص به پیشنهادات کاربردی برای کاربر."""
-        suggestions = []
-        for d in self.deficiencies:
-            suggestions.append(f"لطفاً این مورد را اصلاح یا تکمیل کنید: {d}")
-        return suggestions

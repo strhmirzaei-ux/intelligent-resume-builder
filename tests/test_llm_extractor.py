@@ -1,9 +1,6 @@
 import pytest
 
-from app.modules.extraction.llm_extractor import (
-    LLMExtractionError,
-    ResumeLLMExtractor,
-)
+from app.modules.extraction.llm_extractor import LLMExtractionError, ResumeLLMExtractor
 
 
 class FakeLLM:
@@ -14,31 +11,24 @@ class FakeLLM:
         return next(self.outputs)
 
 
-def test_extract_valid_json():
-    llm = FakeLLM(
-        '{"personal_info":{"first_name":"علی","last_name":"احمدی"}}'
-    )
-    result = ResumeLLMExtractor(llm=llm, max_retries=0).extract("متن نمونه")
-    assert result.personal_info.first_name == "علی"
-
-
-def test_extract_invalid_json_raises():
-    extractor = ResumeLLMExtractor(llm=FakeLLM("not json"), max_retries=0)
-    with pytest.raises(LLMExtractionError):
-        extractor.extract("متن نمونه")
-
-
-def test_extract_retries_after_invalid_response():
-    llm = FakeLLM(
-        [
-            "not json",
-            '{"personal_info":{"full_name":"علی احمدی"}}',
-        ]
-    )
-    result = ResumeLLMExtractor(llm=llm, max_retries=1).extract("متن نمونه")
+def test_valid_json_is_validated():
+    result = ResumeLLMExtractor(
+        FakeLLM('{"personal_info":{"full_name":"علی احمدی"}}'),
+        max_retries=0,
+    ).extract("من علی احمدی هستم")
     assert result.personal_info.full_name == "علی احمدی"
 
 
-def test_extractor_rejects_empty_input():
+def test_invalid_json_and_empty_input_fail_safely():
+    with pytest.raises(LLMExtractionError):
+        ResumeLLMExtractor(FakeLLM("not json"), max_retries=0).extract("متن")
     with pytest.raises(ValueError):
-        ResumeLLMExtractor(llm=FakeLLM("{}")).extract(" ")
+        ResumeLLMExtractor(FakeLLM("{}")).extract(" ")
+
+
+def test_retry_recovers_from_invalid_first_response():
+    result = ResumeLLMExtractor(
+        FakeLLM(["not json", '{"personal_info":{"full_name":"علی احمدی"}}']),
+        max_retries=1,
+    ).extract("من علی احمدی هستم")
+    assert result.personal_info.full_name == "علی احمدی"

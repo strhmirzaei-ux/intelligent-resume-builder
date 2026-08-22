@@ -1,5 +1,6 @@
 # app/services/resume_service.py
-from app.schemas.resume import ResumeSchema, DataStatus
+from app.schemas.resume import ResumeSchema
+
 
 class ResumeService:
     @staticmethod

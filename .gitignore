@@ -12,3 +12,4 @@ env/
 *.egg-info/
 build/
 dist/
+data/sessions/

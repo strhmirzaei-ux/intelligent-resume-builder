@@ -1,0 +1,10 @@
+[
+  {
+    "id": "basic-persian-profile",
+    "text": "من علی احمدی هستم. برنامه‌نویس Python با سه سال سابقه در شرکت الف. ایمیل من ali@example.com است."
+  },
+  {
+    "id": "education-and-skills",
+    "text": "کارشناسی مهندسی کامپیوتر از دانشگاه تهران دارم و به JavaScript و React مسلط هستم."
+  }
+]

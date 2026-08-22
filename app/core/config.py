@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://model.inferx.net/endpoints/v1"
     llm_model: str = "Qwen3.6-35B-A3B-FP8"
     max_input_length: int = 20_000
+    llm_timeout_seconds: float = 45.0
+    session_ttl_seconds: int = 86_400
+    storage_path: str = "data/sessions"
 
     model_config = SettingsConfigDict(
         env_file=".env",
