@@ -13,7 +13,7 @@ def test_gap_analysis_and_weighted_coverage():
     )
     result = GapAnalyzer(resume, "علی احمدی در شرکت الف کار می‌کند").run_analysis()
     assert result["coverage_score"] == 40
-    assert any("Start date" in item for item in result["deficiencies"])
+    assert any("تاریخ شروع" in item for item in result["deficiencies"])
     assert result["is_valid"] is True
 
 

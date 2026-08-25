@@ -11,25 +11,25 @@ class GapAnalyzer:
 
     def check_hallucination(self) -> list[str]:
         if self.resume is None:
-            return ["No resume was provided."]
+            return ["رزومه‌ای برای بررسی ارائه نشده است."]
         source = self.original_text.casefold()
         issues: list[str] = []
         for job in self.resume.work_experiences:
             if job.company_name and job.company_name.casefold() not in source:
-                issues.append(f"Company '{job.company_name}' was not found in source text.")
-        for education in self.resume.educations:
-            if (
-                education.institution_name
-                and education.institution_name.casefold() not in source
-            ):
                 issues.append(
-                    f"Institution '{education.institution_name}' was not found in source text."
+                    f"نام شرکت «{job.company_name}» در متن اولیه پیدا نشد و باید تأیید شود."
+                )
+        for education in self.resume.educations:
+            if education.institution_name and education.institution_name.casefold() not in source:
+                issues.append(
+                    f"نام مؤسسه یا دانشگاه «{education.institution_name}» در متن اولیه پیدا نشد "
+                    "و باید تأیید شود."
                 )
         return issues
 
     def identify_missing_fields(self) -> list[str]:
         if self.resume is None:
-            return ["No resume was provided."]
+            return ["رزومه‌ای برای بررسی ارائه نشده است."]
         missing: list[str] = []
         if not (
             self.resume.personal_info.full_name
@@ -38,17 +38,18 @@ class GapAnalyzer:
                 and self.resume.personal_info.last_name
             )
         ):
-            missing.append("Full name is incomplete.")
+            missing.append("نام و نام خانوادگی کامل نیست.")
         for job in self.resume.work_experiences:
+            title = job.job_title or "این سابقه کاری"
             if not job.start_date and not job.start_date_raw:
-                missing.append(f"Start date is missing for '{job.job_title or 'work experience'}'.")
+                missing.append(f"تاریخ شروع «{title}» مشخص نشده است.")
             if not job.description and not job.achievements:
-                missing.append(f"Description or achievements are missing for '{job.job_title or 'work experience'}'.")
+                missing.append(f"توضیحات یا دستاوردهای «{title}» مشخص نشده است.")
         for skill in self.resume.skills:
             if not skill.level:
-                missing.append(f"Proficiency level is missing for skill '{skill.name}'.")
+                missing.append(f"سطح تسلط بر مهارت «{skill.name}» مشخص نشده است.")
         if self.resume.contact_info.email is None and self.resume.contact_info.phone is None:
-            missing.append("At least one contact method is missing.")
+            missing.append("حداقل یکی از راه‌های تماس، مانند ایمیل یا شماره تلفن، لازم است.")
         return missing
 
     def calculate_coverage_score(self) -> float:
@@ -57,7 +58,15 @@ class GapAnalyzer:
         checks = [
             (10, bool(self.resume.personal_info.full_name or self.resume.personal_info.first_name)),
             (15, bool(self.resume.contact_info.email or self.resume.contact_info.phone)),
-            (30, any(j.company_name and j.job_title and (j.start_date or j.start_date_raw) for j in self.resume.work_experiences)),
+            (
+                30,
+                any(
+                    j.company_name
+                    and j.job_title
+                    and (j.start_date or j.start_date_raw)
+                    for j in self.resume.work_experiences
+                ),
+            ),
             (15, bool(self.resume.educations)),
             (15, bool(self.resume.skills)),
             (10, bool(self.resume.professional_summary)),
@@ -73,7 +82,7 @@ class GapAnalyzer:
             "coverage_score": self.calculate_coverage_score(),
             "is_valid": not hallucinations,
             "deficiencies": self.deficiencies,
-            "suggestions": [f"Complete or verify: {item}" for item in self.deficiencies],
+            "suggestions": [f"لطفاً تکمیل یا بررسی کنید: {item}" for item in self.deficiencies],
         }
 
     def analyze(
@@ -82,7 +91,9 @@ class GapAnalyzer:
         original_text: str | None = None,
     ) -> dict[str, object]:
         if resume is not None:
-            self.resume = resume if isinstance(resume, ResumeSchema) else ResumeSchema.model_validate(resume)
+            self.resume = (
+                resume if isinstance(resume, ResumeSchema) else ResumeSchema.model_validate(resume)
+            )
         if original_text is not None:
             self.original_text = original_text
         return self.run_analysis()

@@ -18,8 +18,9 @@ llm = (
         base_url=settings.llm_base_url,
         model=settings.llm_model,
         timeout=settings.llm_timeout_seconds,
+        max_output_tokens=settings.llm_max_output_tokens,
     )
-    if settings.llm_api_key
+    if settings.llm_base_url
     else None
 )
 pipeline = ResumePipelineService(

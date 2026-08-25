@@ -14,18 +14,18 @@ class InferXClient:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: str | None,
         base_url: str,
         model: str,
         timeout: float = 45.0,
+        max_output_tokens: int = 3_000,
         http_client: httpx.Client | None = None,
     ) -> None:
-        if not api_key:
-            raise ValueError("LLM API key is required")
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
+        self.max_output_tokens = max_output_tokens
         self._client = http_client
 
     def invoke(self, prompt: str) -> str:
@@ -33,11 +33,12 @@ class InferXClient:
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0,
+            "max_tokens": self.max_output_tokens,
+            "stream": False,
         }
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
         try:
             if self._client is not None:
                 response = self._client.post(
@@ -53,9 +54,15 @@ class InferXClient:
                         headers=headers,
                         json=payload,
                     )
-            response.raise_for_status()
+            if response.is_error:
+                detail = response.text[:1000].replace("\n", " ")
+                raise LLMClientError(
+                    f"InferX returned HTTP {response.status_code}: {detail}"
+                )
             data: dict[str, Any] = response.json()
             content = data["choices"][0]["message"]["content"]
             return str(content)
+        except LLMClientError:
+            raise
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as error:
             raise LLMClientError(f"InferX request failed: {error}") from error

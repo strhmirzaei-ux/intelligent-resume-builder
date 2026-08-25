@@ -21,7 +21,14 @@ def test_expected_routes_are_in_openapi():
     assert "/api/v1/resumes/{resume_id}/html" in paths
 
 
-def test_chat_without_configured_llm_returns_service_unavailable():
+def test_chat_returns_service_unavailable_when_llm_fails(monkeypatch):
+    from app.api.routes import chat as chat_route
+    from app.modules.extraction.llm_extractor import LLMExtractionError
+
+    def fail_process(*args, **kwargs):
+        raise LLMExtractionError("model unavailable")
+
+    monkeypatch.setattr(chat_route.pipeline, "process", fail_process)
     response = TestClient(app).post(
         "/api/v1/chat/message",
         json={"message": "من برنامه‌نویس هستم"},

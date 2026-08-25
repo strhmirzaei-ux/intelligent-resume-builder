@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     llm_model: str = "Qwen3.6-35B-A3B-FP8"
     max_input_length: int = 20_000
     llm_timeout_seconds: float = 45.0
+    llm_max_output_tokens: int = 3_000
     session_ttl_seconds: int = 86_400
     storage_path: str = "data/sessions"
 

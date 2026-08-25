@@ -24,6 +24,7 @@ def test_inferx_client_sends_openai_compatible_request():
     assert inferx.invoke("hello") == '{"ok": true}'
     assert captured["headers"]["authorization"] == "Bearer secret"
     assert b'"model":"test-model"' in captured["json"]
+    assert b'"stream":false' in captured["json"]
 
 
 def test_inferx_client_raises_on_http_error():
@@ -34,6 +35,28 @@ def test_inferx_client_raises_on_http_error():
     try:
         inferx.invoke("hello")
     except LLMClientError as error:
-        assert "InferX request failed" in str(error)
+        assert "InferX returned HTTP 401" in str(error)
     else:
         raise AssertionError("Expected InferXClient error")
+
+
+def test_inferx_client_supports_local_server_without_api_key():
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["headers"] = dict(request.headers)
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "ok"}}]},
+        )
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    inferx = InferXClient(
+        api_key=None,
+        base_url="http://localhost:11434/v1",
+        model="qwen-local:latest",
+        http_client=client,
+    )
+
+    assert inferx.invoke("hello") == "ok"
+    assert "authorization" not in captured["headers"]

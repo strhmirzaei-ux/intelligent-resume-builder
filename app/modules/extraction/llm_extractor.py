@@ -33,17 +33,28 @@ class ResumeLLMExtractor:
         self.max_retries = max(0, max_retries)
 
     def build_prompt(self, text: str) -> str:
-        schema = json.dumps(
-            self.schema_model.model_json_schema(),
-            ensure_ascii=False,
-        )
         return (
-            "You are a strict Persian resume information extraction engine.\n"
-            "Return only one JSON object matching the supplied schema.\n"
-            "Use only explicit facts from INPUT. Never invent, infer, or complete facts.\n"
-            "For missing or ambiguous values use null or an empty list.\n"
-            "Every extracted section should include evidence when possible.\n"
-            f"SCHEMA:\n{schema}\nINPUT:\n{text}"
+            "You extract Persian resume data. Return ONLY one valid JSON object.\n"
+            "Use only facts explicitly present in INPUT. Never invent or infer.\n"
+            "Use null for unknown scalar values and [] for unknown lists.\n"
+            "Dates must be ISO format YYYY-MM-DD when exact; otherwise use the raw date field.\n"
+            "Do not include markdown, comments, explanations, or extra keys.\n"
+            "JSON contract:\n"
+            '{"personal_info":{"first_name":null,"last_name":null,"full_name":null,'
+            '"birth_date":null,"birth_date_raw":null,"gender":null,"status":"unverified",'
+            '"confidence":null,"evidence":[]},'
+            '"contact_info":{"email":null,"phone":null,"city":null,"country":null,'
+            '"linkedin":null,"github":null,"website":null,"status":"unverified",'
+            '"confidence":null,"evidence":[]},'
+            '"professional_summary":null,'
+            '"work_experiences":[{"company_name":null,"job_title":null,"start_date":null,'
+            '"end_date":null,"start_date_raw":null,"end_date_raw":null,"is_current":false,'
+            '"description":null,"achievements":[],"status":"unverified","confidence":null,'
+            '"evidence":[]}],'
+            '"educations":[],"skills":[{"name":"...","level":null,"status":"unverified",'
+            '"confidence":null,"evidence":[]}],"languages":[],"projects":[],"certificates":[],'
+            '"interests":[]}\n'
+            f"INPUT:\n{text}"
         )
 
     @staticmethod

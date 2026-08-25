@@ -19,7 +19,7 @@ class GeneratedQuestion:
 
 
 class QuestionGenerator:
-    """تولید سؤال‌های تکمیلی هدفمند از روی کمبودهای رزومه."""
+    """تولید سؤال‌های تکمیلی فارسی از روی کمبودهای رزومه."""
 
     def __init__(self, llm=None) -> None:
         self.llm = llm
@@ -44,47 +44,67 @@ class QuestionGenerator:
         ]
 
     def _classify_priority(self, deficiency: str) -> QuestionPriority:
-        text = deficiency.lower()
+        text = deficiency.casefold()
         high_keywords = (
             "نام",
-            "نام خانوادگی",
             "شرکت",
             "سازمان",
-            "تاریخ",
-            "start_date",
-            "end_date",
             "دانشگاه",
-            "مقطع",
-            "عنوان شغلی",
+            "مؤسسه",
+            "تاریخ",
+            "start date",
+            "end date",
+            "full name",
+            "contact",
+            "راه تماس",
         )
-        medium_keywords = ("مهارت", "سطح", "توضیحات", "project", "پروژه")
-        if any(keyword.lower() in text for keyword in high_keywords):
+        medium_keywords = (
+            "مهارت",
+            "سطح",
+            "توضیحات",
+            "دستاورد",
+            "description",
+            "achievement",
+            "proficiency",
+            "project",
+            "پروژه",
+        )
+        if any(keyword.casefold() in text for keyword in high_keywords):
             return QuestionPriority.HIGH
-        if any(keyword.lower() in text for keyword in medium_keywords):
+        if any(keyword.casefold() in text for keyword in medium_keywords):
             return QuestionPriority.MEDIUM
         return QuestionPriority.LOW
 
     def _build_rule_based_question(self, deficiency: str) -> str:
         text = deficiency.strip()
-        if "شرکت" in text or "سازمان" in text:
-            return "لطفاً نام شرکت یا سازمان را اعلام کنید."
-        if "دانشگاه" in text:
-            return "لطفاً نام دانشگاه را اعلام کنید."
-        if "تاریخ شروع" in text or "start_date" in text:
-            return "لطفاً تاریخ شروع این بخش را اعلام کنید."
-        if "تاریخ پایان" in text or "end_date" in text:
-            return "لطفاً تاریخ پایان این بخش را اعلام کنید."
-        if "سطح تسلط" in text or "مهارت" in text:
-            return "لطفاً سطح تسلط خود بر این مهارت را مشخص کنید."
-        if "نام و نام خانوادگی" in text or "نام خانوادگی" in text:
-            return "لطفاً نام و نام خانوادگی خود را تکمیل کنید."
-        return f"لطفاً این مورد را تکمیل کنید: {text}"
+        normalized = text.casefold()
+
+        if any(term in normalized for term in ("نام شرکت", "شرکت", "company", "organization")):
+            return "لطفاً نام شرکت یا سازمان و عنوان شغلی خود را اعلام کنید."
+        if any(term in normalized for term in ("دانشگاه", "مؤسسه", "institution", "university")):
+            return "لطفاً نام دانشگاه یا مؤسسه آموزشی را اعلام کنید."
+        if "start date" in normalized or "تاریخ شروع" in text:
+            return "لطفاً تاریخ شروع این سابقه کاری را اعلام کنید."
+        if "end date" in normalized or "تاریخ پایان" in text:
+            return "لطفاً تاریخ پایان این سابقه کاری را اعلام کنید؛ اگر هنوز ادامه دارد، بگویید «اکنون»."
+        if any(term in normalized for term in ("description", "achievement", "توضیحات", "دستاورد")):
+            return "لطفاً وظایف، مسئولیت‌ها و دستاوردهای این سابقه کاری را توضیح دهید."
+        if any(term in normalized for term in ("proficiency", "سطح تسلط", "مهارت")):
+            return "لطفاً سطح تسلط خود بر این مهارت را مشخص کنید؛ مثلاً مقدماتی، متوسط یا حرفه‌ای."
+        if "full name" in normalized or "نام و نام خانوادگی" in text:
+            return "لطفاً نام و نام خانوادگی خود را اعلام کنید."
+        if "contact" in normalized or "راه تماس" in text:
+            return "لطفاً حداقل یکی از ایمیل یا شماره تلفن خود را اعلام کنید."
+
+        # Never expose raw schema names or English model output to the user.
+        return "لطفاً اطلاعات مربوط به این بخش از رزومه را تکمیل یا بررسی کنید."
 
     def _polish_question_with_llm(self, question: str, deficiency: str) -> str:
-        prompt = f"""Rewrite this Persian resume follow-up question professionally.
-Do not add information. Return only the question.
-Deficiency: {deficiency}
-Question: {question}"""
+        prompt = f"""این سؤال تکمیلی رزومه را به فارسی روان و محترمانه بازنویسی کن.
+معنا را تغییر نده و اطلاعات جدید اضافه نکن.
+فقط متن سؤال را برگردان.
+کمبود: {deficiency}
+سؤال: {question}"""
         response = self.llm.invoke(prompt)
         text = response.content if hasattr(response, "content") else str(response)
         return self._clean_llm_output(text) or question
