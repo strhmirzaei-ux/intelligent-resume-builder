@@ -43,12 +43,27 @@ class ResumePipelineService:
             resume = ResumeSchema.model_validate(merged_resume)
         analysis = GapAnalyzer(resume, normalized).run_analysis()
         resume_id = resume_id or str(uuid4())
+        previously_asked = (
+            list(previous.get("asked_deficiencies", [])) if previous else []
+        )
+        available_deficiencies = [
+            item
+            for item in analysis.get("deficiencies", [])
+            if item not in previously_asked
+        ]
+        generated_questions = QuestionGenerator().generate(available_deficiencies)
+        next_question = generated_questions[0] if generated_questions else None
+        asked_deficiencies = previously_asked + (
+            [next_question["source_deficiency"]] if next_question else []
+        )
         record = {
             "resume_id": resume_id,
             "raw_text": text,
             "normalized_text": normalized,
             "resume": resume.model_dump(mode="json"),
             "analysis": analysis,
+            "asked_deficiencies": asked_deficiencies,
+            "next_question": next_question["text"] if next_question else None,
         }
         self.store.put(resume_id, record)
         return record

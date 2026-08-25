@@ -47,13 +47,12 @@ def chat_message(payload: ChatRequest) -> ChatResponse:
 
     analysis = record["analysis"]
     deficiencies = list(analysis.get("deficiencies", []))
-    questions = pipeline.questions_for(record)
     return ChatResponse(
         session_id=record["resume_id"],
         status="completed" if not deficiencies else "collecting",
         normalized_text=record["normalized_text"],
         extracted_data=record["resume"],
         deficiencies=deficiencies,
-        next_question=questions[0]["text"] if questions else None,
+        next_question=record.get("next_question"),
         coverage_score=float(analysis["coverage_score"]),
     )

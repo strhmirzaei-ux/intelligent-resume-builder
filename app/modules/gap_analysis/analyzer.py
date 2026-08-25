@@ -39,17 +39,35 @@ class GapAnalyzer:
             )
         ):
             missing.append("نام و نام خانوادگی کامل نیست.")
+        if self.resume.contact_info.email is None and self.resume.contact_info.phone is None:
+            missing.append("حداقل یکی از راه‌های تماس، مانند ایمیل یا شماره تلفن، لازم است.")
+        if not self.resume.work_experiences:
+            missing.append("اطلاعات سابقه کاری وارد نشده است.")
         for job in self.resume.work_experiences:
             title = job.job_title or "این سابقه کاری"
+            if not job.company_name or not job.job_title:
+                missing.append(f"نام شرکت و عنوان شغلی «{title}» مشخص نشده است.")
             if not job.start_date and not job.start_date_raw:
                 missing.append(f"تاریخ شروع «{title}» مشخص نشده است.")
             if not job.description and not job.achievements:
                 missing.append(f"توضیحات یا دستاوردهای «{title}» مشخص نشده است.")
+        if not self.resume.educations:
+            missing.append("اطلاعات تحصیلات و مدارک دانشگاهی وارد نشده است.")
+        for education in self.resume.educations:
+            if not education.institution_name or not education.degree:
+                missing.append("نام مؤسسه آموزشی و مقطع تحصیلی مشخص نشده است.")
         for skill in self.resume.skills:
             if not skill.level:
                 missing.append(f"سطح تسلط بر مهارت «{skill.name}» مشخص نشده است.")
-        if self.resume.contact_info.email is None and self.resume.contact_info.phone is None:
-            missing.append("حداقل یکی از راه‌های تماس، مانند ایمیل یا شماره تلفن، لازم است.")
+        if not self.resume.languages:
+            missing.append("زبان‌های خارجی و سطح تسلط آن‌ها وارد نشده است.")
+        if not self.resume.projects:
+            missing.append("اطلاعات پروژه‌ها و نمونه‌کارها وارد نشده است.")
+        if not self.resume.certificates:
+            missing.append("گواهی‌نامه‌ها و دوره‌های تخصصی وارد نشده است.")
+        if not self.resume.professional_summary:
+            missing.append("خلاصه حرفه‌ای یا هدف شغلی وارد نشده است.")
+        missing = list(dict.fromkeys(missing))
         return missing
 
     def calculate_coverage_score(self) -> float:

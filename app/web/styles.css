@@ -41,6 +41,7 @@ button { cursor: pointer; }
   gap: 24px;
   margin-bottom: 28px;
 }
+.top-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .eyebrow {
   margin: 0 0 10px;
@@ -64,6 +65,7 @@ h1 { margin-bottom: 10px; font-size: clamp(26px, 4vw, 40px); letter-spacing: -1p
   white-space: nowrap;
 }
 .ghost-button:hover { border-color: var(--primary); color: var(--primary); }
+.ghost-button:disabled { cursor: not-allowed; opacity: .5; }
 
 .workspace {
   display: grid;

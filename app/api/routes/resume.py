@@ -20,6 +20,18 @@ def get_resume(resume_id: str) -> dict:
     return record
 
 
+@router.get("/{resume_id}/json")
+def export_resume_json(resume_id: str) -> dict:
+    record = store.get(resume_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Resume not found.")
+    return {
+        "resume_id": resume_id,
+        "resume": record["resume"],
+        "analysis": record["analysis"],
+    }
+
+
 @router.post("/{resume_id}/analyze", response_model=AnalysisResponse)
 def analyze_resume(resume_id: str) -> AnalysisResponse:
     record = store.get(resume_id)

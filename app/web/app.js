@@ -8,6 +8,7 @@ const score = document.querySelector("#coverage-score");
 const deficiencies = document.querySelector("#deficiencies");
 const sessionLabel = document.querySelector("#session-id");
 const newChat = document.querySelector("#new-chat");
+const exportJson = document.querySelector("#export-json");
 
 let sessionId = localStorage.getItem("resume_session_id");
 
@@ -38,6 +39,7 @@ function updateInsights(data) {
   sessionId = data.session_id;
   localStorage.setItem("resume_session_id", sessionId);
   sessionLabel.textContent = sessionId;
+  exportJson.disabled = false;
   deficiencies.replaceChildren();
   if (!data.deficiencies?.length) {
     const item = document.createElement("li");
@@ -89,6 +91,7 @@ async function sendMessage(event) {
 function resetChat() {
   localStorage.removeItem("resume_session_id");
   sessionId = null;
+  exportJson.disabled = true;
   sessionLabel.textContent = "جلسه جدید";
   score.textContent = "—";
   deficiencies.innerHTML = '<li class="empty-state">هنوز تحلیلی انجام نشده است.</li>';
@@ -102,8 +105,33 @@ function resetChat() {
   input.focus();
 }
 
+async function downloadResumeJson() {
+  if (!sessionId) return;
+  errorMessage.textContent = "";
+  try {
+    const response = await fetch(`/api/v1/resumes/${encodeURIComponent(sessionId)}/json`);
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.detail || "دریافت رزومه انجام نشد.");
+    const blob = new Blob([JSON.stringify(body.resume, null, 2)], {
+      type: "application/json;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "resume.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    errorMessage.textContent = error.message;
+  }
+}
+
 form.addEventListener("submit", sendMessage);
 input.addEventListener("input", updateCounter);
 newChat.addEventListener("click", resetChat);
+exportJson.addEventListener("click", downloadResumeJson);
 updateCounter();
-if (sessionId) sessionLabel.textContent = sessionId;
+if (sessionId) {
+  sessionLabel.textContent = sessionId;
+  exportJson.disabled = false;
+}

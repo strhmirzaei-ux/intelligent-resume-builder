@@ -39,6 +39,9 @@ class ResumeLLMExtractor:
             "Use null for unknown scalar values and [] for unknown lists.\n"
             "Dates must be ISO format YYYY-MM-DD when exact; otherwise use the raw date field.\n"
             "Do not include markdown, comments, explanations, or extra keys.\n"
+            "The keys name, level, status, confidence, and evidence are allowed ONLY "
+            "inside an item in the skills or languages array. Never put them at the "
+            "top level of the resume object.\n"
             "JSON contract:\n"
             '{"personal_info":{"first_name":null,"last_name":null,"full_name":null,'
             '"birth_date":null,"birth_date_raw":null,"gender":null,"status":"unverified",'
@@ -59,22 +62,142 @@ class ResumeLLMExtractor:
 
     @staticmethod
     def _extract_json_block(raw_output: str) -> str:
-        text = raw_output.strip()
-        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
-        text = re.sub(r"\s*```$", "", text)
-        start, end = text.find("{"), text.rfind("}")
-        if start < 0 or end < start:
+        text = re.sub(
+            r"<think\b[^>]*>.*?</think\s*>",
+            "",
+            raw_output,
+            flags=re.IGNORECASE | re.DOTALL,
+        ).strip()
+        text = re.sub(r"```(?:json)?", "", text, flags=re.IGNORECASE).replace("```", "")
+        start = text.find("{")
+        if start < 0:
             raise LLMInvalidJSONError("No JSON object found in model output.")
-        return text[start : end + 1]
+
+        depth = 0
+        in_string = False
+        escaped = False
+        for index in range(start, len(text)):
+            char = text[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start : index + 1]
+
+        raise LLMInvalidJSONError("Incomplete JSON object in model output.")
+
+    @staticmethod
+    def _repair_common_json_errors(json_block: str) -> str:
+        repaired = re.sub(r",(\s*[}\]])", r"\1", json_block)
+        return re.sub(
+            r'([{\[,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:',
+            r'\1"\2":',
+            repaired,
+        )
 
     def _parse_json(self, raw_output: str) -> dict[str, Any]:
+        json_block = self._extract_json_block(raw_output)
         try:
-            value = json.loads(self._extract_json_block(raw_output))
+            value = json.loads(json_block)
         except json.JSONDecodeError as error:
-            raise LLMInvalidJSONError(str(error)) from error
+            try:
+                value = json.loads(self._repair_common_json_errors(json_block))
+            except json.JSONDecodeError:
+                raise LLMInvalidJSONError(str(error)) from error
         if not isinstance(value, dict):
             raise LLMInvalidJSONError("Model output must be a JSON object.")
         return value
+
+    @staticmethod
+    def _normalize_common_model_shape(data: dict[str, Any]) -> dict[str, Any]:
+        """Handle a common small-model mistake without inventing resume facts."""
+        valid_statuses = {
+            "confirmed",
+            "partial",
+            "missing",
+            "ambiguous",
+            "conflicting",
+            "inferred",
+            "unverified",
+            "rejected",
+        }
+        top_level_keys = {
+            "personal_info",
+            "contact_info",
+            "professional_summary",
+            "work_experiences",
+            "educations",
+            "skills",
+            "languages",
+            "projects",
+            "certificates",
+            "interests",
+        }
+        skill_keys = {"name", "level", "status", "confidence", "evidence"}
+        if (
+            "name" in data
+            and not (set(data) & top_level_keys)
+            and set(data) <= skill_keys
+        ):
+            data = {"skills": [data]}
+
+        section_names = (
+            "personal_info",
+            "contact_info",
+            "work_experiences",
+            "educations",
+            "skills",
+            "languages",
+            "projects",
+            "certificates",
+        )
+
+        def normalize_section(section: Any) -> dict[str, Any]:
+            if isinstance(section, str):
+                return {
+                    "status": "unverified",
+                    "evidence": [{"source_text": section}],
+                }
+            if not isinstance(section, dict):
+                return {}
+            normalized = dict(section)
+            if normalized.get("status") == "verified":
+                normalized["status"] = "confirmed"
+            if isinstance(normalized.get("evidence"), list):
+                normalized["evidence"] = [
+                    {"source_text": evidence}
+                    if isinstance(evidence, str) and evidence.strip()
+                    else evidence
+                    for evidence in normalized["evidence"]
+                ]
+            if normalized.get("status") not in valid_statuses:
+                normalized["status"] = "unverified"
+            for raw_date_key in ("birth_date_raw", "start_date_raw", "end_date_raw"):
+                raw_date = normalized.get(raw_date_key)
+                if isinstance(raw_date, str) and raw_date.strip():
+                    normalized[raw_date_key] = {"raw_value": raw_date}
+            return normalized
+
+        for section_name in section_names:
+            value = data.get(section_name)
+            if isinstance(value, list):
+                data[section_name] = [
+                    normalize_section(item) for item in value
+                ]
+            elif section_name in data:
+                data[section_name] = normalize_section(value)
+        return data
 
     def _call_llm(self, prompt: str) -> str:
         if self.llm is None:
@@ -91,6 +214,7 @@ class ResumeLLMExtractor:
         for attempt in range(self.max_retries + 1):
             try:
                 data = self._parse_json(self._call_llm(prompt))
+                data = self._normalize_common_model_shape(data)
                 return self.schema_model.model_validate(data)
             except (LLMExtractionError, ValidationError) as error:
                 last_error = (
@@ -101,7 +225,10 @@ class ResumeLLMExtractor:
                 if attempt < self.max_retries:
                     prompt = (
                         f"{self.build_prompt(text)}\n"
-                        f"Previous response was invalid: {last_error}"
+                        "Your previous response was invalid. "
+                        f"Parser error: {last_error}. "
+                        "Return the corrected JSON object only; do not include "
+                        "thinking, markdown, comments, or trailing commas."
                     )
         raise LLMExtractionError(
             f"Extraction failed after {self.max_retries + 1} attempts: {last_error}"
