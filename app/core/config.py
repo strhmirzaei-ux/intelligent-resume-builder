@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     llm_max_output_tokens: int = 3_000
     session_ttl_seconds: int = 86_400
     storage_path: str = "data/sessions"
+    database_url: str | None = None
+    database_auto_create: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",

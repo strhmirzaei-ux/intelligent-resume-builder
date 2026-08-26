@@ -18,6 +18,7 @@ class ChatResponse(BaseModel):
     deficiencies: list[str] = Field(default_factory=list)
     next_question: str | None = None
     coverage_score: float | None = None
+    coverage_graph: dict[str, Any] | None = None
 
 
 class ResumeCreateRequest(BaseModel):

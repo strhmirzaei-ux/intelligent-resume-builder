@@ -1,15 +1,23 @@
-FIELD_WEIGHTS: dict[str, int] = {
-    "identity": 10,
-    "contact": 15,
-    "experience": 30,
-    "education": 15,
-    "skills": 15,
-    "summary": 10,
-    "portfolio": 5,
+NODE_WEIGHTS: dict[str, int] = {
+    "personal_info": 1,
+    "interactive_skills": 4,
+    "projects": 3,
+    "education": 2,
+    "work_experience": 3,
+}
+
+NODE_LABELS: dict[str, str] = {
+    "personal_info": "اطلاعات فردی",
+    "interactive_skills": "مهارت‌ها و تعامل",
+    "projects": "پروژه‌ها",
+    "education": "تحصیلات",
+    "work_experience": "سابقه کاری",
 }
 
 REQUIRED_GAPS = (
-    "full_name",
-    "contact",
-    "experience",
+    "personal_info",
+    "interactive_skills",
+    "projects",
+    "education",
+    "work_experience",
 )

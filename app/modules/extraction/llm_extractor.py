@@ -42,6 +42,12 @@ class ResumeLLMExtractor:
             "The keys name, level, status, confidence, and evidence are allowed ONLY "
             "inside an item in the skills or languages array. Never put them at the "
             "top level of the resume object.\n"
+            "Capture these graph fields when explicitly present: key_strengths, "
+            "career_objective, tools_platforms, other_projects; work items may include "
+            "key_responsibilities; education items may include relevant_courses, "
+            "academic_projects, and achievements; project items may include "
+            "problem_statement, tech_stack, key_features, and outcomes; internships "
+            "may include role, company_name, duration, responsibilities, and key_learnings.\n"
             "JSON contract:\n"
             '{"personal_info":{"first_name":null,"last_name":null,"full_name":null,'
             '"birth_date":null,"birth_date_raw":null,"gender":null,"status":"unverified",'
@@ -50,12 +56,17 @@ class ResumeLLMExtractor:
             '"linkedin":null,"github":null,"website":null,"status":"unverified",'
             '"confidence":null,"evidence":[]},'
             '"professional_summary":null,'
-            '"work_experiences":[{"company_name":null,"job_title":null,"start_date":null,'
-            '"end_date":null,"start_date_raw":null,"end_date_raw":null,"is_current":false,'
-            '"description":null,"achievements":[],"status":"unverified","confidence":null,'
-            '"evidence":[]}],'
-            '"educations":[],"skills":[{"name":"...","level":null,"status":"unverified",'
-            '"confidence":null,"evidence":[]}],"languages":[],"projects":[],"certificates":[],'
+            '"key_strengths":[],"career_objective":null,'
+            '"work_experiences":[],"internships":[],'
+            '"educations":[{"institution_name":null,"degree":null,"field_of_study":null,'
+            '"relevant_courses":[],"academic_projects":[],"achievements":[],"status":"unverified",'
+            '"confidence":null,"evidence":[]}],'
+            '"skills":[{"name":"...","level":null,"status":"unverified",'
+            '"confidence":null,"evidence":[]}],"tools_platforms":[],"languages":[],'
+            '"projects":[{"name":"...","problem_statement":null,"role":null,"tech_stack":[],'
+            '"key_features":[],"outcomes":[],"description":null,"url":null,'
+            '"status":"unverified","confidence":null,"evidence":[]}],'
+            '"other_projects":[],"certificates":[],'
             '"interests":[]}\n'
             f"INPUT:\n{text}"
         )
@@ -156,6 +167,7 @@ class ResumeLLMExtractor:
             "personal_info",
             "contact_info",
             "work_experiences",
+            "internships",
             "educations",
             "skills",
             "languages",

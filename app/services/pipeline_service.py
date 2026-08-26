@@ -64,6 +64,9 @@ class ResumePipelineService:
             "analysis": analysis,
             "asked_deficiencies": asked_deficiencies,
             "next_question": next_question["text"] if next_question else None,
+            "messages": (
+                list(previous.get("messages", [])) if previous else []
+            ) + [{"role": "user", "content": text}],
         }
         self.store.put(resume_id, record)
         return record

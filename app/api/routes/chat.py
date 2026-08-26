@@ -7,7 +7,7 @@ from app.integrations.llm_client import InferXClient, LLMClientError
 from app.modules.extraction.llm_extractor import LLMExtractionError, ResumeLLMExtractor
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.pipeline_service import ResumePipelineService
-from app.storage.json_store import JsonStore
+from app.storage.store_factory import build_store
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 settings = get_settings()
@@ -25,7 +25,7 @@ llm = (
 )
 pipeline = ResumePipelineService(
     extractor=ResumeLLMExtractor(llm=llm),
-    store=JsonStore(settings.storage_path),
+    store=build_store(settings),
 )
 
 
@@ -55,4 +55,5 @@ def chat_message(payload: ChatRequest) -> ChatResponse:
         deficiencies=deficiencies,
         next_question=record.get("next_question"),
         coverage_score=float(analysis["coverage_score"]),
+        coverage_graph=analysis.get("graph"),
     )

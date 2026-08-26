@@ -4,11 +4,11 @@ from fastapi.responses import HTMLResponse
 from app.core.config import get_settings
 from app.rendering.html_renderer import HtmlResumeRenderer
 from app.schemas.chat import AnalysisResponse, ResumeCreateRequest
-from app.storage.json_store import JsonStore
+from app.storage.store_factory import build_store
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 settings = get_settings()
-store = JsonStore(settings.storage_path)
+store = build_store(settings)
 renderer = HtmlResumeRenderer()
 
 
@@ -29,6 +29,7 @@ def export_resume_json(resume_id: str) -> dict:
         "resume_id": resume_id,
         "resume": record["resume"],
         "analysis": record["analysis"],
+        "graph": record["analysis"].get("graph"),
     }
 
 
