@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import get_settings
 from app.integrations.llm_client import InferXClient, LLMClientError
@@ -44,6 +45,11 @@ def chat_message(payload: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=503, detail=str(error)) from error
     except LLMClientError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
+    except SQLAlchemyError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="ارتباط با پایگاه‌داده برقرار نشد. تنظیمات PostgreSQL را بررسی کنید.",
+        ) from error
 
     analysis = record["analysis"]
     deficiencies = list(analysis.get("deficiencies", []))

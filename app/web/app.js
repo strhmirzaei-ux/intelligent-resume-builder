@@ -32,6 +32,18 @@ function addMessage(text, role) {
   log.scrollTop = log.scrollHeight;
 }
 
+async function readApiResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      detail: `Server returned HTTP ${response.status}: ${text.slice(0, 300)}`,
+    };
+  }
+}
+
 function updateInsights(data) {
   score.textContent = data.coverage_score == null
     ? "—"
@@ -72,7 +84,7 @@ async function sendMessage(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, session_id: sessionId }),
     });
-    const body = await response.json();
+    const body = await readApiResponse(response);
     if (!response.ok) {
       throw new Error(body.detail || "ارتباط با سرویس پردازش برقرار نشد.");
     }
@@ -110,7 +122,7 @@ async function downloadResumeJson() {
   errorMessage.textContent = "";
   try {
     const response = await fetch(`/api/v1/resumes/${encodeURIComponent(sessionId)}/json`);
-    const body = await response.json();
+    const body = await readApiResponse(response);
     if (!response.ok) throw new Error(body.detail || "دریافت رزومه انجام نشد.");
     const blob = new Blob([JSON.stringify(body.resume, null, 2)], {
       type: "application/json;charset=utf-8",

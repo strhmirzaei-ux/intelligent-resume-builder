@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -17,10 +18,14 @@ class Database:
         if auto_create:
             Base.metadata.create_all(self.engine)
 
+    @contextmanager
     def session(self) -> Iterator[Session]:
         session = self.session_factory()
         try:
             yield session
+        except Exception:
+            session.rollback()
+            raise
         finally:
             session.close()
 

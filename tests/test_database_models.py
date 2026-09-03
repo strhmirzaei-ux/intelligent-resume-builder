@@ -1,4 +1,5 @@
 from app.db.models import Base
+from app.db.session import Database
 from app.modules.gap_analysis.rules import NODE_WEIGHTS
 
 
@@ -24,3 +25,9 @@ def test_graph_node_weights_match_resume_graph():
         "education": 2,
         "work_experience": 3,
     }
+
+
+def test_database_session_is_a_context_manager():
+    database = Database("sqlite+pysqlite:///:memory:")
+    with database.session() as session:
+        assert session.is_active
