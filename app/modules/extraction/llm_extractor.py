@@ -37,6 +37,8 @@ class ResumeLLMExtractor:
             "You extract Persian resume data. Return ONLY one valid JSON object.\n"
             "Use only facts explicitly present in INPUT. Never invent or infer.\n"
             "Use null for unknown scalar values and [] for unknown lists.\n"
+            "For each work experience, extract a stated duration such as '3 years' into "
+            "duration. Use start_date/end_date only when dates are explicitly stated.\n"
             "Dates must be ISO format YYYY-MM-DD when exact; otherwise use the raw date field.\n"
             "Do not include markdown, comments, explanations, or extra keys.\n"
             "The keys name, level, status, confidence, and evidence are allowed ONLY "
@@ -57,7 +59,10 @@ class ResumeLLMExtractor:
             '"confidence":null,"evidence":[]},'
             '"professional_summary":null,'
             '"key_strengths":[],"career_objective":null,'
-            '"work_experiences":[],"internships":[],'
+            '"work_experiences":[{"company_name":null,"job_title":null,"duration":null,'
+            '"start_date":null,"end_date":null,"start_date_raw":null,"end_date_raw":null,'
+            '"is_current":false,"description":null,"key_responsibilities":[],"achievements":[],"status":"unverified",'
+            '"confidence":null,"evidence":[]}],"internships":[],'
             '"educations":[{"institution_name":null,"degree":null,"field_of_study":null,'
             '"relevant_courses":[],"academic_projects":[],"achievements":[],"status":"unverified",'
             '"confidence":null,"evidence":[]}],'
@@ -175,7 +180,7 @@ class ResumeLLMExtractor:
             "certificates",
         )
 
-        def normalize_section(section: Any) -> dict[str, Any]:
+        def normalize_section(section: Any, section_name: str) -> dict[str, Any]:
             if isinstance(section, str):
                 return {
                     "status": "unverified",
@@ -184,6 +189,45 @@ class ResumeLLMExtractor:
             if not isinstance(section, dict):
                 return {}
             normalized = dict(section)
+            if section_name == "contact_info":
+                for key in ("github", "linkedin", "website"):
+                    value = normalized.get(key)
+                    if isinstance(value, str) and value and "://" not in value:
+                        if key == "github":
+                            normalized[key] = "https://github.com/" + value.lstrip("@/")
+                        elif key == "linkedin":
+                            handle = value.lstrip("@/")
+                            if not handle.startswith("in/"):
+                                handle = "in/" + handle
+                            normalized[key] = "https://www.linkedin.com/" + handle
+                        elif key == "website" and "." in value:
+                            normalized[key] = "https://" + value
+            if section_name == "work_experiences" and "responsibilities" in normalized and "key_responsibilities" not in normalized:
+                normalized["key_responsibilities"] = normalized.pop("responsibilities")
+            if section_name == "work_experiences" and "duties" in normalized and "key_responsibilities" not in normalized:
+                normalized["key_responsibilities"] = normalized.pop("duties")
+            if section_name == "work_experiences" and "tasks" in normalized and "key_responsibilities" not in normalized:
+                normalized["key_responsibilities"] = normalized.pop("tasks")
+            if section_name == "work_experiences" and "accomplishments" in normalized and "achievements" not in normalized:
+                normalized["achievements"] = normalized.pop("accomplishments")
+            if section_name == "internships" and "key_responsibilities" in normalized and "responsibilities" not in normalized:
+                normalized["responsibilities"] = normalized.pop("key_responsibilities")
+            if section_name == "internships" and "duties" in normalized and "responsibilities" not in normalized:
+                normalized["responsibilities"] = normalized.pop("duties")
+            if section_name == "internships" and "tasks" in normalized and "responsibilities" not in normalized:
+                normalized["responsibilities"] = normalized.pop("tasks")
+            if section_name == "internships" and "accomplishments" in normalized and "key_learnings" not in normalized:
+                normalized["key_learnings"] = normalized.pop("accomplishments")
+            if "achievements" in normalized and isinstance(normalized["achievements"], str):
+                normalized["achievements"] = [normalized["achievements"]]
+            if "key_responsibilities" in normalized and isinstance(
+                normalized["key_responsibilities"], str
+            ):
+                normalized["key_responsibilities"] = [normalized["key_responsibilities"]]
+            if "responsibilities" in normalized and isinstance(normalized["responsibilities"], str):
+                normalized["responsibilities"] = [normalized["responsibilities"]]
+            if "key_learnings" in normalized and isinstance(normalized["key_learnings"], str):
+                normalized["key_learnings"] = [normalized["key_learnings"]]
             if normalized.get("status") == "verified":
                 normalized["status"] = "confirmed"
             if isinstance(normalized.get("evidence"), list):
@@ -205,10 +249,10 @@ class ResumeLLMExtractor:
             value = data.get(section_name)
             if isinstance(value, list):
                 data[section_name] = [
-                    normalize_section(item) for item in value
+                    normalize_section(item, section_name) for item in value
                 ]
             elif section_name in data:
-                data[section_name] = normalize_section(value)
+                data[section_name] = normalize_section(value, section_name)
         return data
 
     def _call_llm(self, prompt: str) -> str:

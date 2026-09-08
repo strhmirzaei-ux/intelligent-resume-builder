@@ -11,6 +11,7 @@ class GapAnalyzer:
         self.resume = resume
         self.original_text = original_text
         self.deficiencies: list[str] = []
+        self.deficiency_codes: list[str] = []
 
     def check_hallucination(self) -> list[str]:
         if self.resume is None:
@@ -47,8 +48,9 @@ class GapAnalyzer:
         self,
         node_key: str,
         checks: list[tuple[str, str, Callable[[], bool]]],
-    ) -> tuple[dict[str, Any], list[str]]:
+    ) -> tuple[dict[str, Any], list[str], list[str]]:
         missing = [message for _, message, check in checks if not check()]
+        codes = [f"{node_key}.{key}" for key, _, check in checks if not check()]
         filled = len(checks) - len(missing)
         score = round((filled / len(checks)) * 100, 2) if checks else 100.0
         return (
@@ -61,6 +63,7 @@ class GapAnalyzer:
                 "missing_fields": missing,
             },
             missing,
+            codes,
         )
 
     def _graph_analysis(self) -> tuple[dict[str, Any], list[str]]:
@@ -152,7 +155,8 @@ class GapAnalyzer:
                 "duration",
                 "تاریخ یا مدت هر سابقه کاری مشخص نشده است.",
                 lambda: any(
-                    item.start_date
+                    self._has(item.duration)
+                    or item.start_date
                     or item.start_date_raw
                     or item.end_date
                     or item.end_date_raw
@@ -229,6 +233,7 @@ class GapAnalyzer:
         ]
         nodes: dict[str, dict[str, Any]] = {}
         all_missing: list[str] = []
+        all_codes: list[str] = []
         for node_key, checks in (
             ("personal_info", personal_checks),
             ("education", education_checks),
@@ -236,9 +241,10 @@ class GapAnalyzer:
             ("projects", project_checks),
             ("interactive_skills", skill_checks),
         ):
-            node, missing = self._node_gaps(node_key, checks)
+            node, missing, codes = self._node_gaps(node_key, checks)
             nodes[node_key] = node
             all_missing.extend(missing)
+            all_codes.extend(codes)
 
         total_weight = sum(NODE_WEIGHTS.values())
         weighted_score = sum(
@@ -250,6 +256,7 @@ class GapAnalyzer:
             "weighted_score": round(weighted_score, 2),
             "structure": resume.to_graph().model_dump(mode="json"),
         }
+        self.deficiency_codes = list(dict.fromkeys(all_codes))
         return graph, list(dict.fromkeys(all_missing))
 
     def identify_missing_fields(self) -> list[str]:
@@ -264,10 +271,17 @@ class GapAnalyzer:
         hallucinations = self.check_hallucination()
         graph, missing = self._graph_analysis()
         self.deficiencies = list(dict.fromkeys(hallucinations + missing))
+        self.deficiency_codes = list(
+            dict.fromkeys(
+                [f"provenance.{index}" for index, _ in enumerate(hallucinations)]
+                + self.deficiency_codes
+            )
+        )
         return {
             "coverage_score": float(graph.get("weighted_score", 0.0)),
             "is_valid": not hallucinations,
             "deficiencies": self.deficiencies,
+            "deficiency_codes": self.deficiency_codes,
             "suggestions": [
                 f"لطفاً تکمیل یا بررسی کنید: {item}" for item in self.deficiencies
             ],

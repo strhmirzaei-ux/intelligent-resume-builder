@@ -9,8 +9,8 @@ class LLMClientError(Exception):
     pass
 
 
-class InferXClient:
-    """Small OpenAI-compatible client for the configured InferX endpoint."""
+class OpenAICompatibleClient:
+    """Minimal client for any OpenAI-compatible chat-completions endpoint."""
 
     def __init__(
         self,
@@ -55,14 +55,30 @@ class InferXClient:
                         json=payload,
                     )
             if response.is_error:
-                detail = response.text[:1000].replace("\n", " ")
+                detail = self._format_error_detail(response)
+                if response.status_code == 524:
+                    raise LLMClientError(
+                        "LLM provider timed out before returning a response (HTTP 524). "
+                        "Try a faster model or reduce the requested output size."
+                    )
                 raise LLMClientError(
-                    f"InferX returned HTTP {response.status_code}: {detail}"
+                    f"LLM provider returned HTTP {response.status_code}: {detail}"
                 )
             data: dict[str, Any] = response.json()
             content = data["choices"][0]["message"]["content"]
             return str(content)
         except LLMClientError:
             raise
+        except httpx.TimeoutException as error:
+            raise LLMClientError(
+                "LLM request timed out. Try a faster model or reduce the requested output size."
+            ) from error
         except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as error:
-            raise LLMClientError(f"InferX request failed: {error}") from error
+            raise LLMClientError(f"LLM request failed: {error}") from error
+
+    @staticmethod
+    def _format_error_detail(response: httpx.Response) -> str:
+        content_type = response.headers.get("content-type", "").lower()
+        if "html" in content_type:
+            return "The provider returned an HTML error page."
+        return response.text[:1000].replace("\n", " ")

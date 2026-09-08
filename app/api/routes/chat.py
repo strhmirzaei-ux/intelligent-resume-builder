@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import get_settings
-from app.integrations.llm_client import InferXClient, LLMClientError
+from app.integrations.llm_client import LLMClientError, OpenAICompatibleClient
 from app.modules.extraction.llm_extractor import LLMExtractionError, ResumeLLMExtractor
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.pipeline_service import ResumePipelineService
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 settings = get_settings()
 
 llm = (
-    InferXClient(
+    OpenAICompatibleClient(
         api_key=settings.llm_api_key,
         base_url=settings.llm_base_url,
         model=settings.llm_model,
@@ -24,6 +24,7 @@ llm = (
     if settings.llm_base_url
     else None
 )
+
 pipeline = ResumePipelineService(
     extractor=ResumeLLMExtractor(llm=llm),
     store=build_store(settings),

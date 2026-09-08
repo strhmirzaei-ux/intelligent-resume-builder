@@ -67,6 +67,7 @@ class ContactInfo(SectionBase):
 class WorkExperience(SectionBase):
     company_name: str | None = Field(default=None, max_length=200)
     job_title: str | None = Field(default=None, max_length=200)
+    duration: str | None = Field(default=None, max_length=100)
     start_date: date | None = None
     end_date: date | None = None
     start_date_raw: RawDate | None = None

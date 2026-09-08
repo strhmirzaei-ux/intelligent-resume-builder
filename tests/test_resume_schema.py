@@ -29,6 +29,13 @@ def test_invalid_email_and_date_are_rejected():
         )
 
 
+def test_work_experience_accepts_duration():
+    resume = ResumeSchema(
+        work_experiences=[{"company_name": "شرکت نمونه", "duration": "سه سال"}]
+    )
+    assert resume.work_experiences[0].duration == "سه سال"
+
+
 def test_unknown_fields_are_rejected():
     with pytest.raises(ValidationError):
         ResumeSchema(unknown="value")

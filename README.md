@@ -33,7 +33,7 @@ ruff check app tests
 - شمای مرکزی رزومه با provenance و وضعیت هر فیلد
 - نرمال‌سازی متن فارسی و حفاظت از email، URL و شماره تلفن
 - استخراج JSON با اعتبارسنجی Pydantic و سیاست ضدجعل
-- client سازگار با OpenAI برای InferX
+- client سازگار با OpenAI برای اتصال به هر سرویس LLM سازگار
 - تحلیل شکاف و محاسبه‌ی Coverage Score
 - تولید سؤال‌های تکمیلی rule-based با اولویت‌بندی
 - ذخیره‌سازی موقت JSON با نوشتن اتمیک و TTL
