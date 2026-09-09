@@ -14,3 +14,4 @@ uvicorn-*.log
 build/
 dist/
 data/sessions/
+data/exports/

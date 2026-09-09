@@ -43,3 +43,32 @@ def test_merge_does_not_overwrite_previous_experience_fields():
             {"company_name": "A", "duration": "2 years", "job_title": "Engineer"}
         ]
     }
+
+
+def test_merge_attaches_anonymous_followup_to_latest_experience():
+    merged = ResumePipelineService.merge(
+        {
+            "work_experiences": [
+                {"company_name": "شرکت اول", "job_title": "برنامه‌نویس"},
+                {"company_name": "شرکت دوم", "job_title": "کارآموز"},
+            ]
+        },
+        {"work_experiences": [{"achievements": ["افزایش سرعت سامانه"]}]},
+    )
+    assert len(merged["work_experiences"]) == 2
+    assert merged["work_experiences"][-1]["achievements"] == ["افزایش سرعت سامانه"]
+
+
+def test_session_keeps_one_id_and_records_user_and_assistant_messages(tmp_path: Path):
+    extractor = SequenceExtractor(
+        [{"work_experiences": [{"company_name": "شرکت نمونه", "job_title": "مدیر"}]}]
+    )
+    service = ResumePipelineService(extractor, JsonStore(str(tmp_path)))
+    record = service.process("در شرکت نمونه مدیر بودم")
+    stored = JsonStore(str(tmp_path)).get(record["resume_id"])
+
+    assert stored is not None
+    assert stored["resume_id"] == record["resume_id"]
+    assert [message["role"] for message in stored["messages"]] == ["user", "assistant"]
+    assert stored["messages"][0]["content"] == "در شرکت نمونه مدیر بودم"
+    assert stored["messages"][1]["content"] == stored["next_question"]

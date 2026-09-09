@@ -9,6 +9,8 @@ const deficiencies = document.querySelector("#deficiencies");
 const sessionLabel = document.querySelector("#session-id");
 const newChat = document.querySelector("#new-chat");
 const exportJson = document.querySelector("#export-json");
+const exportPdf = document.querySelector("#export-pdf");
+const exportDocx = document.querySelector("#export-docx");
 
 let sessionId = localStorage.getItem("resume_session_id");
 
@@ -52,6 +54,8 @@ function updateInsights(data) {
   localStorage.setItem("resume_session_id", sessionId);
   sessionLabel.textContent = sessionId;
   exportJson.disabled = false;
+  exportPdf.disabled = false;
+  exportDocx.disabled = false;
   deficiencies.replaceChildren();
   if (!data.deficiencies?.length) {
     const item = document.createElement("li");
@@ -104,6 +108,8 @@ function resetChat() {
   localStorage.removeItem("resume_session_id");
   sessionId = null;
   exportJson.disabled = true;
+  exportPdf.disabled = true;
+  exportDocx.disabled = true;
   sessionLabel.textContent = "جلسه جدید";
   score.textContent = "—";
   deficiencies.innerHTML = '<li class="empty-state">هنوز تحلیلی انجام نشده است.</li>';
@@ -131,8 +137,40 @@ async function downloadResumeJson() {
     const link = document.createElement("a");
     link.href = url;
     link.download = "resume.json";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      link.remove();
+    }, 1000);
+  } catch (error) {
+    errorMessage.textContent = error.message;
+  }
+}
+
+async function downloadResumeFile(extension) {
+  if (!sessionId) return;
+  errorMessage.textContent = "";
+  try {
+    const response = await fetch(
+      `/api/v1/resumes/${encodeURIComponent(sessionId)}/${extension}?fresh=${Date.now()}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      const body = await readApiResponse(response);
+      throw new Error(body.detail || "دریافت فایل رزومه انجام نشد.");
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `resume-${sessionId}-latest.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      link.remove();
+    }, 1000);
   } catch (error) {
     errorMessage.textContent = error.message;
   }
@@ -142,8 +180,29 @@ form.addEventListener("submit", sendMessage);
 input.addEventListener("input", updateCounter);
 newChat.addEventListener("click", resetChat);
 exportJson.addEventListener("click", downloadResumeJson);
+exportPdf.addEventListener("click", () => downloadResumeFile("pdf"));
+exportDocx.addEventListener("click", () => downloadResumeFile("docx"));
 updateCounter();
-if (sessionId) {
-  sessionLabel.textContent = sessionId;
-  exportJson.disabled = false;
+async function restoreSession() {
+  if (!sessionId) return;
+  try {
+    const response = await fetch(
+      `/api/v1/resumes/${encodeURIComponent(sessionId)}?fresh=${Date.now()}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) throw new Error("session not found");
+    sessionLabel.textContent = sessionId;
+    exportJson.disabled = false;
+    exportPdf.disabled = false;
+    exportDocx.disabled = false;
+  } catch {
+    localStorage.removeItem("resume_session_id");
+    sessionId = null;
+    sessionLabel.textContent = "جلسه جدید";
+    exportJson.disabled = true;
+    exportPdf.disabled = true;
+    exportDocx.disabled = true;
+  }
 }
+
+restoreSession();

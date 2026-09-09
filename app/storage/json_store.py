@@ -9,7 +9,12 @@ from typing import Any
 
 class JsonStore:
     def __init__(self, root: str = "data/sessions") -> None:
-        self.root = Path(root)
+        # Relative paths are anchored to the project root, not the process CWD.
+        # This keeps sessions in one predictable location when uvicorn is
+        # launched from another directory.
+        project_root = Path(__file__).resolve().parents[2]
+        configured_root = Path(root)
+        self.root = configured_root if configured_root.is_absolute() else project_root / configured_root
         self.root.mkdir(parents=True, exist_ok=True)
         self._lock = Lock()
 

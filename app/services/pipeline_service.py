@@ -60,6 +60,12 @@ class ResumePipelineService:
         previous_codes = list(previous.get("asked_deficiency_codes", [])) if previous else []
         if previous and not previous_codes:
             previous_codes = self._infer_asked_codes(previous.get("next_question"))
+        if previous and not previous_codes:
+            previous_codes = self._codes_for_previous_question(
+                previous.get("next_question"),
+                analysis.get("deficiencies", []),
+                deficiency_codes,
+            )
         available_deficiencies = [
             item for index, item in enumerate(analysis.get("deficiencies", []))
             if index >= len(deficiency_codes) or deficiency_codes[index] not in previous_codes
@@ -74,6 +80,11 @@ class ResumePipelineService:
             if next_question and next_question["source_deficiency"] in analysis["deficiencies"]
             else []
         )
+        messages = list(previous.get("messages", [])) if previous else []
+        messages.append({"role": "user", "content": text})
+        if next_question:
+            messages.append({"role": "assistant", "content": next_question["text"]})
+
         record = {
             "resume_id": resume_id,
             "raw_text": text,
@@ -83,9 +94,7 @@ class ResumePipelineService:
             "asked_deficiencies": asked_deficiencies,
             "asked_deficiency_codes": asked_deficiency_codes,
             "next_question": next_question["text"] if next_question else None,
-            "messages": (
-                list(previous.get("messages", [])) if previous else []
-            ) + [{"role": "user", "content": text}],
+            "messages": messages,
         }
         self.store.put(resume_id, record)
         return record
@@ -135,9 +144,7 @@ class ResumePipelineService:
                     == existing["job_title"].casefold()
                 )
             ]
-            index = candidates[0] if candidates else (
-                len(result) - 1 if len(result) == 1 else None
-            )
+            index = candidates[0] if candidates else (len(result) - 1 if result else None)
             if index is None:
                 result.append(dict(incoming))
             else:
@@ -156,6 +163,8 @@ class ResumePipelineService:
             "work_experience.achievements",
         }
         question = str(previous.get("next_question") or "")
+        if "زبان" in question or "زبان" in answer:
+            return ResumePipelineService._apply_language_answer(resume, answer)
         is_work_details_question = any(
             term in question for term in ("وظایف", "مسئولیت", "دستاورد")
         )
@@ -178,6 +187,42 @@ class ResumePipelineService:
         return ResumeSchema.model_validate(updated)
 
     @staticmethod
+    def _apply_language_answer(resume: ResumeSchema, answer: str) -> ResumeSchema:
+        """Preserve language answers when a small model omits them from its JSON."""
+        import re
+
+        updated = resume.model_dump(mode="json")
+        existing = {
+            str(item.get("name", "")).casefold(): item
+            for item in updated.get("languages", [])
+            if isinstance(item, dict) and item.get("name")
+        }
+        pattern = r"زبان\s+([^،,؛; و]+).*?(?:در حد|سطح)\s+(مادری|پیشرفته|متوسط|مقدماتی|خوب|عالی)"
+        matches = re.findall(pattern, answer, flags=re.IGNORECASE)
+        for name, level in matches:
+            name = name.strip()
+            item = existing.get(name.casefold())
+            if item is None:
+                updated.setdefault("languages", []).append({
+                    "name": name,
+                    "level": level,
+                    "status": "confirmed",
+                    "confidence": 1.0,
+                    "evidence": [{"source_text": answer}],
+                })
+            elif not item.get("level"):
+                item["level"] = level
+        if not matches and answer.strip():
+            updated.setdefault("languages", []).append({
+                "name": answer.strip()[:100],
+                "level": None,
+                "status": "confirmed",
+                "confidence": 0.8,
+                "evidence": [{"source_text": answer}],
+            })
+        return ResumeSchema.model_validate(updated)
+
+    @staticmethod
     def _infer_asked_codes(question: Any) -> list[str]:
         text = str(question or "")
         if any(term in text for term in ("وظایف", "مسئولیت")):
@@ -188,4 +233,17 @@ class ResumePipelineService:
             return ["work_experience.experiences"]
         if any(term in text for term in ("مدت", "تاریخ شروع")):
             return ["work_experience.duration"]
+        if "زبان" in text:
+            return ["interactive_skills.languages"]
+        return []
+
+    @staticmethod
+    def _codes_for_previous_question(
+        question: Any, deficiencies: Any, codes: Any
+    ) -> list[str]:
+        question_text = str(question or "")
+        for index, deficiency in enumerate(deficiencies or []):
+            if str(deficiency) and str(deficiency) in question_text:
+                if index < len(codes or []):
+                    return [codes[index]]
         return []

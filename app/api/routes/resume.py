@@ -1,8 +1,10 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 
 from app.core.config import get_settings
+from app.rendering.docx_renderer import DocxResumeRenderer
 from app.rendering.html_renderer import HtmlResumeRenderer
+from app.rendering.pdf_renderer import PdfResumeRenderer
 from app.schemas.chat import AnalysisResponse, ResumeCreateRequest
 from app.storage.store_factory import build_store
 
@@ -10,6 +12,8 @@ router = APIRouter(prefix="/resumes", tags=["resumes"])
 settings = get_settings()
 store = build_store(settings)
 renderer = HtmlResumeRenderer()
+pdf_renderer = PdfResumeRenderer()
+docx_renderer = DocxResumeRenderer()
 
 
 @router.get("/{resume_id}")
@@ -48,6 +52,36 @@ def render_resume(resume_id: str) -> HTMLResponse:
     if record is None:
         raise HTTPException(status_code=404, detail="Resume not found.")
     return HTMLResponse(renderer.render(record["resume"]))
+
+
+@router.get("/{resume_id}/pdf")
+def export_resume_pdf(resume_id: str) -> Response:
+    record = store.get(resume_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Resume not found.")
+    return Response(
+        content=pdf_renderer.render(record["resume"]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="resume-{resume_id}-latest.pdf"',
+            "Cache-Control": "no-store, max-age=0",
+        },
+    )
+
+
+@router.get("/{resume_id}/docx")
+def export_resume_docx(resume_id: str) -> Response:
+    record = store.get(resume_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Resume not found.")
+    return Response(
+        content=docx_renderer.render(record["resume"]),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f'attachment; filename="resume-{resume_id}-latest.docx"',
+            "Cache-Control": "no-store, max-age=0",
+        },
+    )
 
 
 @router.post("", status_code=201)

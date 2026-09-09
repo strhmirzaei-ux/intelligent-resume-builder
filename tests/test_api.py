@@ -12,6 +12,9 @@ def test_health_endpoint():
 def test_web_app_is_served():
     response = TestClient(app).get("/")
     assert response.status_code == 200
+    assert "app.js?v=20260909-export" in response.text
+    assert 'id="export-pdf"' in response.text
+    assert 'id="export-docx"' in response.text
     assert "رزومه" in response.text
 
 
@@ -19,6 +22,8 @@ def test_expected_routes_are_in_openapi():
     paths = app.openapi()["paths"]
     assert "/api/v1/chat/message" in paths
     assert "/api/v1/resumes/{resume_id}/html" in paths
+    assert "/api/v1/resumes/{resume_id}/pdf" in paths
+    assert "/api/v1/resumes/{resume_id}/docx" in paths
 
 
 def test_chat_returns_service_unavailable_when_llm_fails(monkeypatch):

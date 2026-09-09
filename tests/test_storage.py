@@ -25,3 +25,9 @@ def test_json_store_expires_old_records(tmp_path: Path):
     path.write_text(__import__("json").dumps(value, ensure_ascii=False), encoding="utf-8")
     assert store.get("old", max_age_seconds=1) is None
     assert not path.exists()
+
+
+def test_json_store_keeps_relative_root_under_project_root():
+    store = JsonStore("data/sessions")
+    assert store.root.name == "sessions"
+    assert store.root.parent.name == "data"
