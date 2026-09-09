@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     export_path: str = "data/exports"
     database_url: str | None = None
     database_auto_create: bool = False
+    embedding_enabled: bool = False
+    embedding_model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    entity_resolution_threshold: float = 0.72
+    question_similarity_threshold: float = 0.86
+    question_answer_similarity_threshold: float = 0.25
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -4,11 +4,13 @@ from typing import Any
 from uuid import uuid4
 
 from app.core.config import get_settings
+from app.integrations.embedding_service import EmbeddingService
 from app.modules.extraction.llm_extractor import ResumeLLMExtractor
 from app.modules.gap_analysis.analyzer import GapAnalyzer
 from app.modules.preprocessing.normalizer import PersianTextNormalizer
 from app.modules.question_generation.generator import QuestionGenerator
 from app.schemas.resume import ResumeSchema
+from app.services.entity_resolution import EntityResolver
 from app.storage.json_store import JsonStore
 
 
@@ -19,12 +21,19 @@ class ResumePipelineService:
         store: JsonStore,
         normalizer: PersianTextNormalizer | None = None,
         question_generator: QuestionGenerator | None = None,
+        embedding_service: EmbeddingService | None = None,
+        entity_resolver: EntityResolver | None = None,
     ) -> None:
         self.extractor = extractor
         self.store = store
         self.normalizer = normalizer or PersianTextNormalizer()
         self.questions = question_generator or QuestionGenerator()
         self.settings = get_settings()
+        self.embedding_service = embedding_service or EmbeddingService()
+        self.entity_resolver = entity_resolver or EntityResolver(
+            self.embedding_service,
+            threshold=self.settings.entity_resolution_threshold,
+        )
 
     def process(self, text: str, resume_id: str | None = None) -> dict[str, Any]:
         normalized = self.normalizer.clean_text(text)
@@ -36,7 +45,7 @@ class ResumePipelineService:
         )
         if previous:
             old_resume = ResumeSchema.model_validate(previous["resume"])
-            merged_resume = self.merge(
+            merged_resume = self.merge_with_entity_resolution(
                 old_resume.model_dump(mode="json"),
                 resume.model_dump(mode="json"),
             )
@@ -66,18 +75,31 @@ class ResumePipelineService:
                 analysis.get("deficiencies", []),
                 deficiency_codes,
             )
-        available_deficiencies = [
-            item for index, item in enumerate(analysis.get("deficiencies", []))
-            if index >= len(deficiency_codes) or deficiency_codes[index] not in previous_codes
-        ]
-        generated_questions = QuestionGenerator().generate(available_deficiencies)
-        next_question = generated_questions[0] if generated_questions else None
+        question_history = self._load_question_history(previous)
+        if previous:
+            self._update_question_answers(question_history, previous, analysis, normalized)
+        generated_questions = QuestionGenerator().generate(analysis.get("deficiencies", []))
+        next_question = self._select_question(
+            generated_questions,
+            deficiency_codes,
+            question_history,
+            blocked_codes=set(previous_codes),
+        )
+        next_question_code = (
+            self._question_code(next_question, deficiency_codes, analysis.get("deficiencies", []))
+            if next_question
+            else None
+        )
+        if next_question:
+            question_history.append(
+                self._question_record(next_question, next_question_code)
+            )
         asked_deficiencies = previously_asked + (
             [next_question["source_deficiency"]] if next_question else []
         )
         asked_deficiency_codes = previous_codes + (
-            [deficiency_codes[analysis["deficiencies"].index(next_question["source_deficiency"])] ]
-            if next_question and next_question["source_deficiency"] in analysis["deficiencies"]
+            [next_question_code]
+            if next_question and next_question_code
             else []
         )
         messages = list(previous.get("messages", [])) if previous else []
@@ -93,11 +115,165 @@ class ResumePipelineService:
             "analysis": analysis,
             "asked_deficiencies": asked_deficiencies,
             "asked_deficiency_codes": asked_deficiency_codes,
+            "questions": question_history,
             "next_question": next_question["text"] if next_question else None,
             "messages": messages,
         }
         self.store.put(resume_id, record)
         return record
+
+    def _load_question_history(self, previous: dict[str, Any] | None) -> list[dict[str, Any]]:
+        if not previous:
+            return []
+        history = [dict(item) for item in previous.get("questions", []) if isinstance(item, dict)]
+        legacy_text = previous.get("next_question")
+        if legacy_text and not any(
+            item.get("question_text") == legacy_text or item.get("text") == legacy_text
+            for item in history
+        ):
+            legacy_codes = list(previous.get("asked_deficiency_codes", []))
+            code = legacy_codes[-1] if legacy_codes else self._infer_asked_codes(legacy_text)[0:1]
+            history.append(
+                {
+                    "text": legacy_text,
+                    "question_text": legacy_text,
+                    "question_code": code[0] if isinstance(code, list) and code else code,
+                    "embedding": self.embedding_service.embed(str(legacy_text)),
+                    "answered": False,
+                }
+            )
+        return history
+
+    def _update_question_answers(
+        self,
+        history: list[dict[str, Any]],
+        previous: dict[str, Any],
+        analysis: dict[str, Any],
+        answer: str,
+    ) -> None:
+        current_codes = set(analysis.get("deficiency_codes", []))
+        previous_question = previous.get("next_question")
+        for item in history:
+            if item.get("answered"):
+                continue
+            code = item.get("question_code")
+            if code and code not in current_codes:
+                item["answered"] = True
+                continue
+            if previous_question and item.get("question_text") == previous_question:
+                item["answered"] = self._is_related_answer(
+                    str(item.get("question_text", "")), answer
+                )
+
+    def _select_question(
+        self,
+        candidates: list[dict[str, Any]],
+        deficiency_codes: list[str],
+        history: list[dict[str, Any]],
+        blocked_codes: set[str],
+    ) -> dict[str, Any] | None:
+        for candidate in candidates:
+            code = self._question_code(candidate, deficiency_codes, [
+                item.get("source_deficiency") for item in candidates
+            ])
+            if code in blocked_codes:
+                continue
+            if self._is_duplicate_question(candidate["text"], code, history):
+                continue
+            return candidate
+        return None
+
+    def _is_duplicate_question(
+        self, text: str, code: str | None, history: list[dict[str, Any]]
+    ) -> bool:
+        current_embedding = self.embedding_service.embed(text)
+        normalized = self._normalize_question(text)
+        for item in history:
+            old_text = str(item.get("question_text") or item.get("text") or "")
+            if not old_text:
+                continue
+            if normalized == self._normalize_question(old_text):
+                return True
+            old_embedding = item.get("embedding")
+            if old_embedding is None:
+                old_embedding = self.embedding_service.embed(old_text)
+            similarity = self.embedding_service.cosine_similarity(current_embedding, old_embedding)
+            if similarity is not None and similarity >= self.settings.question_similarity_threshold:
+                return True
+            if code and item.get("question_code") == code and not item.get("answered", False):
+                return True
+        return False
+
+    def _is_related_answer(self, question: str, answer: str) -> bool:
+        similarity = self.embedding_service.cosine_similarity(
+            self.embedding_service.embed(question), self.embedding_service.embed(answer)
+        )
+        return (
+            similarity is not None
+            and similarity >= self.settings.question_answer_similarity_threshold
+        )
+
+    def _question_record(self, question: dict[str, Any], code: str | None) -> dict[str, Any]:
+        text = str(question["text"])
+        return {
+            "text": text,
+            "question_text": text,
+            "question_code": code,
+            "embedding": self.embedding_service.embed(text),
+            "answered": False,
+        }
+
+    @staticmethod
+    def _question_code(
+        question: dict[str, Any] | None,
+        codes: list[str],
+        deficiencies: list[str],
+    ) -> str | None:
+        if not question:
+            return None
+        source = question.get("source_deficiency")
+        if source in deficiencies:
+            index = deficiencies.index(source)
+            if index < len(codes):
+                return codes[index]
+        return source
+
+    @staticmethod
+    def _normalize_question(text: str) -> str:
+        return " ".join(text.casefold().split())
+
+    def merge_with_entity_resolution(self, old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+        """Merge extracted data while resolving work entities semantically."""
+        merged = dict(old)
+        for key, value in new.items():
+            if value is None or value == "" or value == []:
+                continue
+            if key in {"work_experiences", "internships"} and isinstance(value, list):
+                if key == "work_experiences":
+                    merged[key] = self._merge_work_experiences_with_resolution(
+                        merged.get(key, []), value
+                    )
+                else:
+                    merged[key] = self._merge_experience_lists(merged.get(key, []), value)
+            elif isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = self.merge_with_entity_resolution(merged[key], value)
+            else:
+                merged[key] = value
+        return merged
+
+    def _merge_work_experiences_with_resolution(
+        self, old: list[Any], new: list[Any]
+    ) -> list[Any]:
+        result = [dict(item) for item in old if isinstance(item, dict)]
+        for incoming in new:
+            if not isinstance(incoming, dict):
+                continue
+            match = self.entity_resolver.find_work_experience_match(result, incoming)
+            if match.index is None:
+                result.append(dict(incoming))
+            else:
+                result[match.index] = self.merge(result[match.index], incoming)
+        return result
 
     def get(self, resume_id: str) -> dict[str, Any] | None:
         return self.store.get(resume_id)
@@ -243,7 +419,10 @@ class ResumePipelineService:
     ) -> list[str]:
         question_text = str(question or "")
         for index, deficiency in enumerate(deficiencies or []):
-            if str(deficiency) and str(deficiency) in question_text:
-                if index < len(codes or []):
-                    return [codes[index]]
+            if (
+                str(deficiency)
+                and str(deficiency) in question_text
+                and index < len(codes or [])
+            ):
+                return [codes[index]]
         return []

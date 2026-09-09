@@ -10,6 +10,8 @@ def test_database_contains_graph_persistence_tables():
         "chat_messages",
         "resume_versions",
         "resume_graph_nodes",
+        "resume_questions",
+        "resume_entities",
     }
 
 

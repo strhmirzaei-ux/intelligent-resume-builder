@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -14,6 +15,7 @@ class Base(DeclarativeBase):
 
 
 JsonType = JSONB
+EMBEDDING_DIMENSION = 384
 
 
 class User(Base):
@@ -42,6 +44,7 @@ class ResumeSession(Base):
     raw_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
     normalized_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
     asked_deficiencies: Mapped[list[str]] = mapped_column(JsonType, default=list)
+    asked_deficiency_codes: Mapped[list[str]] = mapped_column(JsonType, default=list)
     next_question: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -52,6 +55,12 @@ class ResumeSession(Base):
 
     user: Mapped[User | None] = relationship(back_populates="sessions")
     messages: Mapped[list[ChatMessage]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+    questions: Mapped[list[ResumeQuestion]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+    entities: Mapped[list[ResumeEntity]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
     versions: Mapped[list[ResumeVersion]] = relationship(
@@ -70,11 +79,55 @@ class ChatMessage(Base):
     )
     role: Mapped[str] = mapped_column(String(30), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
     session: Mapped[ResumeSession] = relationship(back_populates="messages")
+
+
+class ResumeQuestion(Base):
+    __tablename__ = "resume_questions"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    session_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("resume_sessions.id", ondelete="CASCADE")
+    )
+    question_text: Mapped[str] = mapped_column(Text, nullable=False)
+    question_code: Mapped[str | None] = mapped_column(String(200))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
+    answered: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    session: Mapped[ResumeSession] = relationship(back_populates="questions")
+
+
+class ResumeEntity(Base):
+    __tablename__ = "resume_entities"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    session_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("resume_sessions.id", ondelete="CASCADE")
+    )
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_data: Mapped[dict[str, Any]] = mapped_column(JsonType, nullable=False, default=dict)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSION))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    session: Mapped[ResumeSession] = relationship(back_populates="entities")
 
 
 class ResumeVersion(Base):
