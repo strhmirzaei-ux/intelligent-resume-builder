@@ -27,7 +27,9 @@ class ResumePipelineService:
         self.extractor = extractor
         self.store = store
         self.normalizer = normalizer or PersianTextNormalizer()
-        self.questions = question_generator or QuestionGenerator()
+        self.questions = question_generator or QuestionGenerator(
+            llm=getattr(extractor, "llm", None)
+        )
         self.settings = get_settings()
         self.embedding_service = embedding_service or EmbeddingService()
         self.entity_resolver = entity_resolver or EntityResolver(
@@ -78,12 +80,46 @@ class ResumePipelineService:
         question_history = self._load_question_history(previous)
         if previous:
             self._update_question_answers(question_history, previous, analysis, normalized)
-        generated_questions = QuestionGenerator().generate(analysis.get("deficiencies", []))
+        blocked_codes = set(previous_codes)
+        blocked_codes.update(
+            str(item["question_code"])
+            for item in question_history
+            if item.get("question_code") and not item.get("answered", False)
+        )
+        llm_deficiencies = {
+            deficiency
+            for index, deficiency in enumerate(analysis.get("deficiencies", []))
+            if index >= len(deficiency_codes) or deficiency_codes[index] not in blocked_codes
+        }
+        question_kwargs = {
+            "resume_context": resume.model_dump(mode="json"),
+            "previous_questions": [
+                str(item.get("question_text") or item.get("text"))
+                for item in question_history
+                if item.get("question_text") or item.get("text")
+            ],
+            "conversation_context": conversation_text,
+            "llm_deficiencies": llm_deficiencies,
+            "llm_question_limit": 1,
+        }
+        try:
+            generated_questions = self.questions.generate(
+                analysis.get("deficiencies", []), **question_kwargs
+            )
+        except TypeError as error:
+            # Preserve compatibility with small custom QuestionGenerator doubles.
+            if not any(
+                marker in str(error)
+                for marker in ("unexpected keyword", "positional argument", "keyword argument")
+            ):
+                raise
+            generated_questions = self.questions.generate(analysis.get("deficiencies", []))
         next_question = self._select_question(
             generated_questions,
             deficiency_codes,
+            analysis.get("deficiencies", []),
             question_history,
-            blocked_codes=set(previous_codes),
+            blocked_codes=blocked_codes,
         )
         next_question_code = (
             self._question_code(next_question, deficiency_codes, analysis.get("deficiencies", []))
@@ -169,13 +205,12 @@ class ResumePipelineService:
         self,
         candidates: list[dict[str, Any]],
         deficiency_codes: list[str],
+        deficiencies: list[str],
         history: list[dict[str, Any]],
         blocked_codes: set[str],
     ) -> dict[str, Any] | None:
         for candidate in candidates:
-            code = self._question_code(candidate, deficiency_codes, [
-                item.get("source_deficiency") for item in candidates
-            ])
+            code = self._question_code(candidate, deficiency_codes, deficiencies)
             if code in blocked_codes:
                 continue
             if self._is_duplicate_question(candidate["text"], code, history):
@@ -272,7 +307,16 @@ class ResumePipelineService:
             if match.index is None:
                 result.append(dict(incoming))
             else:
-                result[match.index] = self.merge(result[match.index], incoming)
+                existing = result[match.index]
+                merged = self.merge(existing, incoming)
+                # Keep the established identity when a semantic alias matched
+                # an existing entity. Missing identity fields may still be
+                # filled by the incoming extraction.
+                if existing.get("company_name") and incoming.get("company_name"):
+                    merged["company_name"] = existing["company_name"]
+                if existing.get("job_title") and incoming.get("job_title"):
+                    merged["job_title"] = existing["job_title"]
+                result[match.index] = merged
         return result
 
     def get(self, resume_id: str) -> dict[str, Any] | None:
@@ -346,19 +390,35 @@ class ResumePipelineService:
         )
         if not work_gap_codes.intersection(previous_deficiencies) and not is_work_details_question:
             return resume
-        if not resume.work_experiences:
+        question_has_responsibilities = any(
+            term in question for term in ("وظایف", "مسئولیت", "توضیحات", "responsibilit", "description")
+        )
+        question_has_achievements = any(
+            term in question for term in ("دستاورد", "achievement")
+        )
+        if "work_experience.responsibilities" in previous_deficiencies:
+            question_has_responsibilities = True
+        if "work_experience.achievements" in previous_deficiencies:
+            question_has_achievements = True
+        if not resume.work_experiences or not (question_has_responsibilities or question_has_achievements):
             return resume
         updated = resume.model_dump(mode="json")
-        target = updated["work_experiences"][-1]
-        if "دستاورد" in question or "دستاورد" in answer:
-            target.setdefault("achievements", [])
-            if answer not in target["achievements"]:
-                target["achievements"].append(answer)
-        else:
-            target["description"] = target.get("description") or answer
-            target.setdefault("key_responsibilities", [])
-            if answer not in target["key_responsibilities"]:
-                target["key_responsibilities"].append(answer)
+        target = next(
+            (
+                item
+                for item in reversed(updated["work_experiences"])
+                if (
+                    (question_has_responsibilities and not item.get("description") and not item.get("key_responsibilities"))
+                    or (question_has_achievements and not item.get("achievements"))
+                )
+            ),
+            updated["work_experiences"][-1],
+        )
+        if question_has_achievements and not target.get("achievements"):
+            target["achievements"] = [answer]
+        if question_has_responsibilities and not target.get("description") and not target.get("key_responsibilities"):
+            target["description"] = answer
+            target["key_responsibilities"] = [answer]
         target.setdefault("evidence", []).append({"source_text": answer})
         return ResumeSchema.model_validate(updated)
 
@@ -401,10 +461,13 @@ class ResumePipelineService:
     @staticmethod
     def _infer_asked_codes(question: Any) -> list[str]:
         text = str(question or "")
+        codes: list[str] = []
         if any(term in text for term in ("وظایف", "مسئولیت")):
-            return ["work_experience.responsibilities"]
+            codes.append("work_experience.responsibilities")
         if "دستاورد" in text:
-            return ["work_experience.achievements"]
+            codes.append("work_experience.achievements")
+        if codes:
+            return codes
         if any(term in text for term in ("نام شرکت", "عنوان شغلی")):
             return ["work_experience.experiences"]
         if any(term in text for term in ("مدت", "تاریخ شروع")):
