@@ -36,6 +36,9 @@ class ResumeLLMExtractor:
         return (
             "You extract Persian resume data. Return ONLY one valid JSON object.\n"
             "Use only facts explicitly present in INPUT. Never invent or infer.\n"
+            "If INPUT does not contain an explicit about-me or professional summary, "
+            "write a concise professional_summary based only on the stated facts. "
+            "Do not leave professional_summary null when enough facts are available.\n"
             "Use null for unknown scalar values and [] for unknown lists.\n"
             "For each work experience, extract a stated duration such as '3 years' into "
             "duration. Use start_date/end_date only when dates are explicitly stated.\n"

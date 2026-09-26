@@ -47,10 +47,19 @@ def test_export_endpoints_return_downloadable_files(monkeypatch):
     from app.api.routes import resume as resume_route
     from app.main import app
 
-    monkeypatch.setattr(resume_route.store, "get", lambda resume_id: {"resume": sample_resume()})
+    monkeypatch.setattr(
+        resume_route.store,
+        "get",
+        lambda resume_id: {"resume": sample_resume(), "analysis": {}},
+    )
     client = TestClient(app)
+    json_response = client.get("/api/v1/resumes/demo/json")
     pdf = client.get("/api/v1/resumes/demo/pdf")
     docx = client.get("/api/v1/resumes/demo/docx")
+    assert json_response.status_code == 200
+    assert json_response.headers["content-type"].startswith("application/json")
+    assert json_response.headers["content-disposition"].endswith("resume-demo-latest.json\"")
+    assert json_response.json()["resume"] == sample_resume()
     assert pdf.status_code == 200
     assert pdf.headers["content-type"].startswith("application/pdf")
     assert pdf.content.startswith(b"%PDF")

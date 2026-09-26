@@ -7,7 +7,6 @@ class Settings(BaseSettings):
     app_name: str = "Intelligent Persian Resume Builder"
     debug: bool = False
     llm_api_key: str | None = None
-    llm_base_url: str = "https://api.example.com/v1"
     llm_model: str = "your-model-name"
     max_input_length: int = 20_000
     llm_timeout_seconds: float = 45.0

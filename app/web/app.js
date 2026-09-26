@@ -93,7 +93,7 @@ async function sendMessage(event) {
       throw new Error(body.detail || "ارتباط با سرویس پردازش برقرار نشد.");
     }
     updateInsights(body);
-    addMessage(body.next_question || "اطلاعاتت ثبت شد. مورد دیگری هم هست که اضافه کنی؟", "assistant");
+    addMessage(body.next_question || "اطلاعاتت ثبت شد؛ رزومه‌ات آماده دریافت است.", "assistant");
   } catch (error) {
     errorMessage.textContent = error.message;
     addMessage("متأسفانه پردازش پیام انجام نشد. تنظیمات سرویس هوش مصنوعی را بررسی کن.", "assistant");
@@ -136,7 +136,7 @@ async function downloadResumeJson() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "resume.json";
+    link.download = `resume-${sessionId}-latest.json`;
     document.body.appendChild(link);
     link.click();
     setTimeout(() => {
@@ -177,6 +177,12 @@ async function downloadResumeFile(extension) {
 }
 
 form.addEventListener("submit", sendMessage);
+input.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
 input.addEventListener("input", updateCounter);
 newChat.addEventListener("click", resetChat);
 exportJson.addEventListener("click", downloadResumeJson);

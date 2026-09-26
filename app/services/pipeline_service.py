@@ -15,6 +15,8 @@ from app.storage.json_store import JsonStore
 
 
 class ResumePipelineService:
+    MAX_SESSION_QUESTIONS = 8
+
     def __init__(
         self,
         extractor: ResumeLLMExtractor,
@@ -65,6 +67,13 @@ class ResumePipelineService:
                 + [normalized]
             )
         analysis = GapAnalyzer(resume, conversation_text).run_analysis()
+        if previous:
+            previous_score = float(previous.get("analysis", {}).get("coverage_score", 0))
+            if analysis["coverage_score"] < previous_score:
+                analysis["coverage_score"] = previous_score
+                graph = analysis.get("graph")
+                if isinstance(graph, dict):
+                    graph["weighted_score"] = previous_score
         resume_id = resume_id or str(uuid4())
         previously_asked = list(previous.get("asked_deficiencies", [])) if previous else []
         deficiency_codes = list(analysis.get("deficiency_codes", []))
@@ -102,18 +111,11 @@ class ResumePipelineService:
             "llm_deficiencies": llm_deficiencies,
             "llm_question_limit": 1,
         }
-        try:
-            generated_questions = self.questions.generate(
-                analysis.get("deficiencies", []), **question_kwargs
-            )
-        except TypeError as error:
-            # Preserve compatibility with small custom QuestionGenerator doubles.
-            if not any(
-                marker in str(error)
-                for marker in ("unexpected keyword", "positional argument", "keyword argument")
-            ):
-                raise
-            generated_questions = self.questions.generate(analysis.get("deficiencies", []))
+        generated_questions = (
+            self.questions.generate(analysis.get("deficiencies", []), **question_kwargs)
+            if len(question_history) < self.MAX_SESSION_QUESTIONS
+            else []
+        )
         next_question = self._select_question(
             generated_questions,
             deficiency_codes,
@@ -292,9 +294,49 @@ class ResumePipelineService:
                     merged[key] = self._merge_experience_lists(merged.get(key, []), value)
             elif isinstance(value, dict) and isinstance(merged.get(key), dict):
                 merged[key] = self.merge_with_entity_resolution(merged[key], value)
+            elif isinstance(value, list) and isinstance(merged.get(key), list):
+                merged[key] = self._merge_accumulated_list(merged[key], value)
+            elif key == "status":
+                if value not in (None, "unverified"):
+                    merged[key] = value
+            elif key == "confidence":
+                if value is not None:
+                    merged[key] = value
+            elif merged.get(key) not in (None, "", []):
+                # Treat each user turn as an addition to the resume. The model
+                # may omit or reinterpret earlier facts, so keep populated facts.
+                continue
             else:
                 merged[key] = value
         return merged
+
+    @staticmethod
+    def _merge_accumulated_list(old: list[Any], new: list[Any]) -> list[Any]:
+        result = list(old)
+        for incoming in new:
+            if isinstance(incoming, dict):
+                identity_keys = ("name", "institution_name", "degree", "role", "url")
+                identity = next(
+                    (incoming.get(key) for key in identity_keys if incoming.get(key)), None
+                )
+                match = next(
+                    (
+                        index
+                        for index, existing in enumerate(result)
+                        if isinstance(existing, dict)
+                        and identity
+                        and any(existing.get(key) == identity for key in identity_keys)
+                    ),
+                    None,
+                )
+                if match is None:
+                    if incoming not in result:
+                        result.append(incoming)
+                else:
+                    result[match] = ResumePipelineService.merge(result[match], incoming)
+            elif incoming not in result:
+                result.append(incoming)
+        return result
 
     def _merge_work_experiences_with_resolution(
         self, old: list[Any], new: list[Any]
@@ -336,11 +378,54 @@ class ResumePipelineService:
                 merged[key] = ResumePipelineService._merge_experience_lists(
                     merged.get(key, []), value
                 )
+            elif isinstance(value, list) and isinstance(merged.get(key), list):
+                merged[key] = ResumePipelineService._merge_accumulated_list(merged[key], value)
             elif isinstance(value, dict) and isinstance(merged.get(key), dict):
                 merged[key] = ResumePipelineService.merge(merged[key], value)
+            elif key == "status":
+                if value not in (None, "unverified"):
+                    merged[key] = value
+            elif key == "confidence":
+                if value is not None:
+                    merged[key] = value
+            elif merged.get(key) not in (None, "", []):
+                continue
             else:
                 merged[key] = value
         return merged
+
+    @staticmethod
+    def _apply_answer_fallback(
+        resume: ResumeSchema, previous: dict[str, Any], answer: str
+    ) -> ResumeSchema:
+        """Preserve a direct answer when extraction omits the asked detail."""
+        question = str(previous.get("next_question") or "")
+        answer = answer.strip()
+        if not answer:
+            return resume
+        data = resume.model_dump(mode="json")
+
+        if "زبان" in question and not data.get("languages"):
+            data["languages"] = [{
+                "name": answer[:100],
+                "status": "confirmed",
+                "confidence": 0.8,
+                "evidence": [{"source_text": answer}],
+            }]
+            return ResumeSchema.model_validate(data)
+
+        if any(term in question for term in ("وظایف", "مسئولیت", "دستاورد", "توضیحات")):
+            work_items = data.get("work_experiences") or []
+            if work_items:
+                target = work_items[-1]
+                if not target.get("description") and not target.get("key_responsibilities"):
+                    target["description"] = answer
+                    target["key_responsibilities"] = [answer]
+                evidence = target.setdefault("evidence", [])
+                if not any(item.get("source_text") == answer for item in evidence):
+                    evidence.append({"source_text": answer})
+                return ResumeSchema.model_validate(data)
+        return resume
 
     @staticmethod
     def _merge_experience_lists(old: list[Any], new: list[Any]) -> list[Any]:
@@ -370,93 +455,6 @@ class ResumePipelineService:
             else:
                 result[index] = ResumePipelineService.merge(result[index], incoming)
         return result
-
-    @staticmethod
-    def _apply_answer_fallback(
-        resume: ResumeSchema, previous: dict[str, Any], answer: str
-    ) -> ResumeSchema:
-        """Keep a direct answer when the model returns no structured work details."""
-        previous_analysis = previous.get("analysis", {})
-        previous_deficiencies = previous_analysis.get("deficiency_codes", [])
-        work_gap_codes = {
-            "work_experience.responsibilities",
-            "work_experience.achievements",
-        }
-        question = str(previous.get("next_question") or "")
-        if "زبان" in question or "زبان" in answer:
-            return ResumePipelineService._apply_language_answer(resume, answer)
-        is_work_details_question = any(
-            term in question for term in ("وظایف", "مسئولیت", "دستاورد")
-        )
-        if not work_gap_codes.intersection(previous_deficiencies) and not is_work_details_question:
-            return resume
-        question_has_responsibilities = any(
-            term in question for term in ("وظایف", "مسئولیت", "توضیحات", "responsibilit", "description")
-        )
-        question_has_achievements = any(
-            term in question for term in ("دستاورد", "achievement")
-        )
-        if "work_experience.responsibilities" in previous_deficiencies:
-            question_has_responsibilities = True
-        if "work_experience.achievements" in previous_deficiencies:
-            question_has_achievements = True
-        if not resume.work_experiences or not (question_has_responsibilities or question_has_achievements):
-            return resume
-        updated = resume.model_dump(mode="json")
-        target = next(
-            (
-                item
-                for item in reversed(updated["work_experiences"])
-                if (
-                    (question_has_responsibilities and not item.get("description") and not item.get("key_responsibilities"))
-                    or (question_has_achievements and not item.get("achievements"))
-                )
-            ),
-            updated["work_experiences"][-1],
-        )
-        if question_has_achievements and not target.get("achievements"):
-            target["achievements"] = [answer]
-        if question_has_responsibilities and not target.get("description") and not target.get("key_responsibilities"):
-            target["description"] = answer
-            target["key_responsibilities"] = [answer]
-        target.setdefault("evidence", []).append({"source_text": answer})
-        return ResumeSchema.model_validate(updated)
-
-    @staticmethod
-    def _apply_language_answer(resume: ResumeSchema, answer: str) -> ResumeSchema:
-        """Preserve language answers when a small model omits them from its JSON."""
-        import re
-
-        updated = resume.model_dump(mode="json")
-        existing = {
-            str(item.get("name", "")).casefold(): item
-            for item in updated.get("languages", [])
-            if isinstance(item, dict) and item.get("name")
-        }
-        pattern = r"زبان\s+([^،,؛; و]+).*?(?:در حد|سطح)\s+(مادری|پیشرفته|متوسط|مقدماتی|خوب|عالی)"
-        matches = re.findall(pattern, answer, flags=re.IGNORECASE)
-        for name, level in matches:
-            name = name.strip()
-            item = existing.get(name.casefold())
-            if item is None:
-                updated.setdefault("languages", []).append({
-                    "name": name,
-                    "level": level,
-                    "status": "confirmed",
-                    "confidence": 1.0,
-                    "evidence": [{"source_text": answer}],
-                })
-            elif not item.get("level"):
-                item["level"] = level
-        if not matches and answer.strip():
-            updated.setdefault("languages", []).append({
-                "name": answer.strip()[:100],
-                "level": None,
-                "status": "confirmed",
-                "confidence": 0.8,
-                "evidence": [{"source_text": answer}],
-            })
-        return ResumeSchema.model_validate(updated)
 
     @staticmethod
     def _infer_asked_codes(question: Any) -> list[str]:

@@ -21,9 +21,9 @@ def test_web_app_is_served():
 def test_expected_routes_are_in_openapi():
     paths = app.openapi()["paths"]
     assert "/api/v1/chat/message" in paths
-    assert "/api/v1/resumes/{resume_id}/html" in paths
     assert "/api/v1/resumes/{resume_id}/pdf" in paths
     assert "/api/v1/resumes/{resume_id}/docx" in paths
+    assert "/api/v1/resumes/{resume_id}/json" in paths
 
 
 def test_chat_returns_service_unavailable_when_llm_fails(monkeypatch):

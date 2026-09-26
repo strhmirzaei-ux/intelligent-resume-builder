@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from typing import Any
+import re
+from urllib.parse import unquote, urlsplit, urlunsplit
 
 LABELS = {
-    "summary": "خلاصه حرفه‌ای",
+    "summary": "درباره من",
     "objective": "هدف شغلی",
     "experience": "سوابق کاری",
     "internship": "کارآموزی",
@@ -38,6 +40,26 @@ def non_empty(values: Iterable[Any]) -> list[str]:
     return [text(value) for value in values if value not in (None, "", [])]
 
 
+def normalize_profile_url(value: Any, platform: str) -> str:
+    """Clean common URL encoding and duplicated-domain artifacts in profile links."""
+    raw = unquote(text(value)).strip()
+    if not raw:
+        return ""
+    raw = re.sub(r"\s+", "", raw)
+    if raw.startswith("www."):
+        raw = "https://" + raw
+    elif not re.match(r"^[a-z][a-z0-9+.-]*://", raw, re.IGNORECASE):
+        raw = "https://" + raw
+
+    parsed = urlsplit(raw)
+    path = parsed.path
+    if platform == "linkedin" and (parsed.hostname or "").lower().endswith("linkedin.com"):
+        path = re.sub(r"^/(?:in/)?linkedin\.com/(?:in/)?", "/in/", path, flags=re.IGNORECASE)
+    elif platform == "github" and (parsed.hostname or "").lower().endswith("github.com"):
+        path = re.sub(r"^/github\.com/", "/", path, flags=re.IGNORECASE)
+    return urlunsplit((parsed.scheme, parsed.netloc, path, parsed.query, parsed.fragment))
+
+
 def contact_lines(resume: dict[str, Any]) -> list[str]:
     contact = resume.get("contact_info") or {}
     result = non_empty(
@@ -45,8 +67,8 @@ def contact_lines(resume: dict[str, Any]) -> list[str]:
             contact.get("email"),
             contact.get("phone"),
             "، ".join(non_empty([contact.get("city"), contact.get("country")])),
-            contact.get("linkedin"),
-            contact.get("github"),
+            normalize_profile_url(contact.get("linkedin"), "linkedin"),
+            normalize_profile_url(contact.get("github"), "github"),
             contact.get("website"),
         ]
     )

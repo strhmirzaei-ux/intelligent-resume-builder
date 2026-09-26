@@ -1,7 +1,10 @@
+﻿
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+import json
+import re
 from typing import Any
 
 
@@ -19,117 +22,88 @@ class GeneratedQuestion:
 
 
 class QuestionGenerator:
-    """تولید سؤال‌های تکمیلی فارسی از روی کمبودهای رزومه."""
+    """Generate completion questions directly with the configured LLM."""
 
     def __init__(self, llm=None) -> None:
         self.llm = llm
 
-    def generate(self, deficiencies: list[str]) -> list[dict[str, Any]]:
+    def generate(self, deficiencies: list[str], **kwargs: Any) -> list[dict[str, Any]]:
+        if self.llm is None:
+            raise RuntimeError("An LLM client is required for question generation.")
+        allowed = kwargs.get("llm_deficiencies") or set(deficiencies)
+        limit = int(kwargs.get("llm_question_limit", 1))
+        context = kwargs.get("resume_context") or {}
+        previous = kwargs.get("previous_questions") or []
+        conversation = kwargs.get("conversation_context", "")
         questions: list[GeneratedQuestion] = []
-        seen: set[str] = set()
         for deficiency in deficiencies:
-            if deficiency in seen:
+            if deficiency not in allowed or len(questions) >= limit:
                 continue
-            seen.add(deficiency)
-            question = self._build_rule_based_question(deficiency)
-            if self.llm is not None:
-                question = self._polish_question_with_llm(question, deficiency)
-            questions.append(
-                GeneratedQuestion(
-                    text=question,
-                    priority=self._classify_priority(deficiency),
-                    source_deficiency=deficiency,
-                )
-            )
+            prompt = f"""برای تکمیل رزومه، فقط یک سؤال کوتاه و روشن به فارسی بنویس.
+کمبود اطلاعات: {deficiency}
+اطلاعات فعلی رزومه: {context}
+سؤال‌های قبلی: {previous}
+متن گفت‌وگو: {conversation}
+اطلاعات جدید جعل نکن و فقط متن سؤال را برگردان."""
+            response = self.llm.invoke(prompt)
+            text = response.content if hasattr(response, "content") else str(response)
+            text = self._clean_question_text(text)
+            if not text:
+                raise RuntimeError("LLM returned an empty completion question.")
+            questions.append(GeneratedQuestion(text, self._priority(deficiency), deficiency))
+        order = {QuestionPriority.HIGH: 0, QuestionPriority.MEDIUM: 1, QuestionPriority.LOW: 2}
+        return [{"text": q.text, "priority": q.priority.value, "source_deficiency": q.source_deficiency}
+                for q in sorted(questions, key=lambda q: order[q.priority])]
 
-        order = {
-            QuestionPriority.HIGH: 0,
-            QuestionPriority.MEDIUM: 1,
-            QuestionPriority.LOW: 2,
-        }
-        return [
-            {
-                "text": item.text,
-                "priority": item.priority.value,
-                "source_deficiency": item.source_deficiency,
-            }
-            for item in sorted(questions, key=lambda item: order[item.priority])
-        ]
-
-    def _classify_priority(self, deficiency: str) -> QuestionPriority:
+    @staticmethod
+    def _priority(deficiency: str) -> QuestionPriority:
         text = deficiency.casefold()
-        high_terms = (
-            "نام",
-            "تماس",
-            "شرکت",
-            "سازمان",
-            "دانشگاه",
-            "مؤسسه",
-            "تاریخ",
-            "سابقه کاری",
-            "تحصیلات",
-            "full name",
-            "contact",
-        )
-        medium_terms = (
-            "مهارت",
-            "سطح",
-            "توضیحات",
-            "دستاورد",
-            "پروژه",
-            "نمونه‌کار",
-            "زبان",
-            "گواهی",
-            "خلاصه",
-            "هدف شغلی",
-            "description",
-            "achievement",
-            "project",
-        )
-        if any(term.casefold() in text for term in high_terms):
+        if any(term in text for term in ("full name", "contact", "نام", "تماس", "تاریخ")):
             return QuestionPriority.HIGH
-        if any(term.casefold() in text for term in medium_terms):
+        if any(term in text for term in ("description", "achievement", "project", "مهارت", "تحصیلات")):
             return QuestionPriority.MEDIUM
         return QuestionPriority.LOW
 
-    def _build_rule_based_question(self, deficiency: str) -> str:
-        text = deficiency.strip().casefold()
-        if "نام و نام خانوادگی" in text or "full name" in text:
-            return "لطفاً نام و نام خانوادگی خود را اعلام کنید."
-        if "راه‌های تماس" in text or "تماس" in text or "contact" in text:
-            return "لطفاً حداقل یکی از ایمیل یا شماره تلفن خود را اعلام کنید."
-        if "سابقه کاری وارد نشده" in text:
-            return "لطفاً سابقه‌های کاری خود را با نام شرکت، عنوان شغلی و مدت همکاری معرفی کنید."
-        if "نام شرکت" in text or "شرکت" in text or "organization" in text:
-            return "لطفاً نام شرکت یا سازمان و عنوان شغلی خود را اعلام کنید."
-        if "تاریخ شروع" in text or "start date" in text:
-            return "لطفاً تاریخ شروع این سابقه کاری را اعلام کنید؛ اگر هنوز ادامه دارد، بگویید «اکنون»."
-        if "توضیحات" in text or "دستاورد" in text or "description" in text:
-            return "لطفاً وظایف، مسئولیت‌ها و مهم‌ترین دستاوردهای این سابقه کاری را توضیح دهید."
-        if "تحصیلات" in text or "مدارک دانشگاهی" in text or "مؤسسه آموزشی" in text:
-            return "لطفاً مقطع تحصیلی، رشته و نام دانشگاه یا مؤسسه آموزشی خود را اعلام کنید."
-        if "زبان‌های خارجی" in text or "زبان" in text:
-            return "لطفاً زبان‌هایی را که می‌دانید و سطح تسلط خود بر هرکدام را اعلام کنید."
-        if "پروژه‌ها" in text or "نمونه‌کار" in text:
-            return "لطفاً مهم‌ترین پروژه‌ها یا نمونه‌کارهای خود را همراه با نقش و توضیح کوتاه معرفی کنید."
-        if "گواهی‌نامه" in text or "دوره‌های تخصصی" in text:
-            return "لطفاً گواهی‌نامه‌ها و دوره‌های تخصصی خود را همراه با نام صادرکننده اعلام کنید."
-        if "خلاصه حرفه‌ای" in text or "هدف شغلی" in text:
-            return "لطفاً درباره تخصص، نقاط قوت و هدف شغلی خود یک خلاصه کوتاه بنویسید."
-        if "سطح تسلط" in text:
-            return "لطفاً سطح تسلط خود بر این مهارت را مقدماتی، متوسط یا حرفه‌ای اعلام کنید."
-        return "لطفاً اطلاعات مربوط به این بخش از رزومه را تکمیل یا بررسی کنید."
+    @classmethod
+    def _clean_question_text(cls, value: Any) -> str:
+        """Turn the model's response into the plain question shown to the user.
 
-    def _polish_question_with_llm(self, question: str, deficiency: str) -> str:
-        prompt = f"""این سؤال تکمیلی رزومه را به فارسی روان بازنویسی کن.
-معنا را تغییر نده و اطلاعات جدید اضافه نکن.
-فقط متن سؤال را برگردان.
-کمبود: {deficiency}
-سؤال: {question}"""
-        response = self.llm.invoke(prompt)
-        text = response.content if hasattr(response, "content") else str(response)
-        return self._clean_llm_output(text) or question
+        Some providers honor ``response_format=json_object`` even though the
+        prompt asks for plain text and return ``{"question": "..."}``.  Keep
+        that provider detail out of the chat history and UI.
+        """
+        if isinstance(value, dict):
+            value = value.get("question", value.get("text", ""))
+        elif isinstance(value, list):
+            value = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in value
+            )
 
-    @staticmethod
-    def _clean_llm_output(text: str) -> str:
-        return text.strip().strip('"').strip("'")
+        text = str(value or "").strip()
+        text = re.sub(r"^```(?:json|text)?\s*|\s*```$", "", text, flags=re.IGNORECASE).strip()
+        if not text:
+            return ""
+
+        # First handle valid JSON responses, including a JSON string or object.
+        try:
+            parsed = json.loads(text)
+        except (TypeError, json.JSONDecodeError):
+            parsed = None
+        if isinstance(parsed, (dict, list)):
+            cleaned = cls._clean_question_text(parsed)
+            if cleaned:
+                return cleaned
+        if isinstance(parsed, str):
+            text = parsed.strip()
+
+        # Recover the field when the provider added commentary around JSON.
+        match = re.search(r'"question"\s*:\s*("(?:\\.|[^"\\])*")', text, flags=re.DOTALL)
+        if match:
+            try:
+                return str(json.loads(match.group(1))).strip()
+            except json.JSONDecodeError:
+                pass
+
+        # A plain quoted answer is also common with text-only providers.
+        return text.strip().strip('"').strip("'").strip()

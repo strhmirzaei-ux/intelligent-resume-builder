@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import get_settings
-from app.integrations.llm_client import LLMClientError, OpenAICompatibleClient
+from app.integrations.llm_client import GeminiAIStudioClient, LLMClientError
 from app.modules.extraction.llm_extractor import LLMExtractionError, ResumeLLMExtractor
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.pipeline_service import ResumePipelineService
@@ -14,14 +14,13 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 settings = get_settings()
 
 llm = (
-    OpenAICompatibleClient(
+    GeminiAIStudioClient(
         api_key=settings.llm_api_key,
-        base_url=settings.llm_base_url,
         model=settings.llm_model,
         timeout=settings.llm_timeout_seconds,
         max_output_tokens=settings.llm_max_output_tokens,
     )
-    if settings.llm_base_url
+    if settings.llm_api_key
     else None
 )
 
@@ -56,7 +55,7 @@ def chat_message(payload: ChatRequest) -> ChatResponse:
     deficiencies = list(analysis.get("deficiencies", []))
     return ChatResponse(
         session_id=record["resume_id"],
-        status="completed" if not deficiencies else "collecting",
+        status="collecting" if record.get("next_question") else "completed",
         normalized_text=record["normalized_text"],
         extracted_data=record["resume"],
         deficiencies=deficiencies,

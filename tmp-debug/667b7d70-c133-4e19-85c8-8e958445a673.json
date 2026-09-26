@@ -1,0 +1,306 @@
+{
+  "resume_id": "667b7d70-c133-4e19-85c8-8e958445a673",
+  "raw_text": "سه سال در شرکت نمونه به عنوان مدیر کار کردم",
+  "normalized_text": "سه سال در شرکت نمونه به عنوان مدیر کار کردم",
+  "resume": {
+    "personal_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "first_name": null,
+      "last_name": null,
+      "full_name": null,
+      "birth_date": null,
+      "birth_date_raw": null,
+      "gender": null
+    },
+    "contact_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "email": null,
+      "phone": null,
+      "city": null,
+      "country": null,
+      "linkedin": null,
+      "github": null,
+      "website": null
+    },
+    "professional_summary": null,
+    "key_strengths": [],
+    "career_objective": null,
+    "work_experiences": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [],
+        "company_name": "شرکت نمونه",
+        "job_title": "مدیر",
+        "duration": "سه سال",
+        "start_date": null,
+        "end_date": null,
+        "start_date_raw": null,
+        "end_date_raw": null,
+        "is_current": false,
+        "description": null,
+        "key_responsibilities": [],
+        "achievements": []
+      }
+    ],
+    "internships": [],
+    "educations": [],
+    "skills": [],
+    "tools_platforms": [],
+    "languages": [],
+    "projects": [],
+    "other_projects": [],
+    "certificates": [],
+    "interests": []
+  },
+  "analysis": {
+    "coverage_score": 11.54,
+    "is_valid": true,
+    "deficiencies": [
+      "نام و نام خانوادگی کامل نیست.",
+      "محل سکونت مشخص نشده است.",
+      "حداقل یکی از ایمیل یا شماره تلفن لازم است.",
+      "لینک LinkedIn، GitHub یا وب‌سایت مشخص نشده است.",
+      "خلاصه حرفه‌ای، نقاط قوت یا هدف شغلی وارد نشده است.",
+      "اطلاعات تکمیلی مانند زبان‌ها، گواهی‌نامه‌ها یا علایق وارد نشده است.",
+      "مدرک تحصیلی، رشته و نام دانشگاه یا مؤسسه آموزشی مشخص نشده است.",
+      "دوره‌های مرتبط یا دروس مهم وارد نشده است.",
+      "پروژه‌های دانشگاهی یا دستاوردهای آموزشی وارد نشده است.",
+      "مسئولیت‌ها و وظایف سابقه کاری وارد نشده است.",
+      "دستاوردهای قابل اندازه‌گیری سابقه کاری وارد نشده است.",
+      "حداقل یک پروژه یا نمونه‌کار با عنوان لازم است.",
+      "مسئله، نقش، فناوری‌ها یا قابلیت‌های پروژه‌ها مشخص نشده است.",
+      "نتایج پروژه یا لینک GitHub و Demo وارد نشده است.",
+      "پروژه‌های شخصی، متن‌باز یا کوچک‌تر وارد نشده است.",
+      "مهارت‌های فنی و تخصصی وارد نشده است.",
+      "سطح تسلط مهارت‌های فنی مشخص نشده است.",
+      "ابزارها و پلتفرم‌های مورد استفاده وارد نشده‌اند.",
+      "زبان‌های برنامه‌نویسی، فریم‌ورک‌ها یا کتابخانه‌های تخصصی مشخص نشده‌اند."
+    ],
+    "deficiency_codes": [
+      "personal_info.name",
+      "personal_info.location",
+      "personal_info.contact",
+      "personal_info.links",
+      "personal_info.summary",
+      "personal_info.additional",
+      "education.degrees",
+      "education.courses",
+      "education.academic_projects",
+      "work_experience.responsibilities",
+      "work_experience.achievements",
+      "projects.projects",
+      "projects.details",
+      "projects.outcomes",
+      "projects.other_projects",
+      "interactive_skills.technical",
+      "interactive_skills.levels",
+      "interactive_skills.tools",
+      "interactive_skills.languages"
+    ],
+    "suggestions": [
+      "لطفاً تکمیل یا بررسی کنید: نام و نام خانوادگی کامل نیست.",
+      "لطفاً تکمیل یا بررسی کنید: محل سکونت مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: حداقل یکی از ایمیل یا شماره تلفن لازم است.",
+      "لطفاً تکمیل یا بررسی کنید: لینک LinkedIn، GitHub یا وب‌سایت مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: خلاصه حرفه‌ای، نقاط قوت یا هدف شغلی وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: اطلاعات تکمیلی مانند زبان‌ها، گواهی‌نامه‌ها یا علایق وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: مدرک تحصیلی، رشته و نام دانشگاه یا مؤسسه آموزشی مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: دوره‌های مرتبط یا دروس مهم وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: پروژه‌های دانشگاهی یا دستاوردهای آموزشی وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: مسئولیت‌ها و وظایف سابقه کاری وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: دستاوردهای قابل اندازه‌گیری سابقه کاری وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: حداقل یک پروژه یا نمونه‌کار با عنوان لازم است.",
+      "لطفاً تکمیل یا بررسی کنید: مسئله، نقش، فناوری‌ها یا قابلیت‌های پروژه‌ها مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: نتایج پروژه یا لینک GitHub و Demo وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: پروژه‌های شخصی، متن‌باز یا کوچک‌تر وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: مهارت‌های فنی و تخصصی وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: سطح تسلط مهارت‌های فنی مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: ابزارها و پلتفرم‌های مورد استفاده وارد نشده‌اند.",
+      "لطفاً تکمیل یا بررسی کنید: زبان‌های برنامه‌نویسی، فریم‌ورک‌ها یا کتابخانه‌های تخصصی مشخص نشده‌اند."
+    ],
+    "graph": {
+      "nodes": {
+        "personal_info": {
+          "label": "اطلاعات فردی",
+          "weight": 1,
+          "score": 0.0,
+          "filled_fields": 0,
+          "total_fields": 6,
+          "missing_fields": [
+            "نام و نام خانوادگی کامل نیست.",
+            "محل سکونت مشخص نشده است.",
+            "حداقل یکی از ایمیل یا شماره تلفن لازم است.",
+            "لینک LinkedIn، GitHub یا وب‌سایت مشخص نشده است.",
+            "خلاصه حرفه‌ای، نقاط قوت یا هدف شغلی وارد نشده است.",
+            "اطلاعات تکمیلی مانند زبان‌ها، گواهی‌نامه‌ها یا علایق وارد نشده است."
+          ]
+        },
+        "education": {
+          "label": "تحصیلات",
+          "weight": 2,
+          "score": 0.0,
+          "filled_fields": 0,
+          "total_fields": 3,
+          "missing_fields": [
+            "مدرک تحصیلی، رشته و نام دانشگاه یا مؤسسه آموزشی مشخص نشده است.",
+            "دوره‌های مرتبط یا دروس مهم وارد نشده است.",
+            "پروژه‌های دانشگاهی یا دستاوردهای آموزشی وارد نشده است."
+          ]
+        },
+        "work_experience": {
+          "label": "سابقه کاری",
+          "weight": 3,
+          "score": 50.0,
+          "filled_fields": 2,
+          "total_fields": 4,
+          "missing_fields": [
+            "مسئولیت‌ها و وظایف سابقه کاری وارد نشده است.",
+            "دستاوردهای قابل اندازه‌گیری سابقه کاری وارد نشده است."
+          ]
+        },
+        "projects": {
+          "label": "پروژه‌ها",
+          "weight": 3,
+          "score": 0.0,
+          "filled_fields": 0,
+          "total_fields": 4,
+          "missing_fields": [
+            "حداقل یک پروژه یا نمونه‌کار با عنوان لازم است.",
+            "مسئله، نقش، فناوری‌ها یا قابلیت‌های پروژه‌ها مشخص نشده است.",
+            "نتایج پروژه یا لینک GitHub و Demo وارد نشده است.",
+            "پروژه‌های شخصی، متن‌باز یا کوچک‌تر وارد نشده است."
+          ]
+        },
+        "interactive_skills": {
+          "label": "مهارت‌ها و تعامل",
+          "weight": 4,
+          "score": 0.0,
+          "filled_fields": 0,
+          "total_fields": 4,
+          "missing_fields": [
+            "مهارت‌های فنی و تخصصی وارد نشده است.",
+            "سطح تسلط مهارت‌های فنی مشخص نشده است.",
+            "ابزارها و پلتفرم‌های مورد استفاده وارد نشده‌اند.",
+            "زبان‌های برنامه‌نویسی، فریم‌ورک‌ها یا کتابخانه‌های تخصصی مشخص نشده‌اند."
+          ]
+        }
+      },
+      "weights": {
+        "personal_info": 1,
+        "interactive_skills": 4,
+        "projects": 3,
+        "education": 2,
+        "work_experience": 3
+      },
+      "weighted_score": 11.54,
+      "structure": {
+        "personal_info": {
+          "basic_details": {
+            "full_name": null,
+            "first_name": null,
+            "last_name": null,
+            "location": null,
+            "phone": null,
+            "email": null,
+            "linkedin": null,
+            "github": null
+          },
+          "summary": {
+            "professional_summary": null,
+            "key_strengths": [],
+            "career_objective": null
+          },
+          "core_skills": {
+            "skills": [],
+            "tools_platforms": []
+          },
+          "additional_info": {
+            "languages": [],
+            "certificates": [],
+            "interests": []
+          }
+        },
+        "education": {
+          "degrees": [],
+          "relevant_courses": [],
+          "academic_projects": [],
+          "achievements": []
+        },
+        "work_experience": {
+          "experiences": [
+            {
+              "status": "unverified",
+              "confidence": null,
+              "evidence": [],
+              "company_name": "شرکت نمونه",
+              "job_title": "مدیر",
+              "duration": "سه سال",
+              "start_date": null,
+              "end_date": null,
+              "start_date_raw": null,
+              "end_date_raw": null,
+              "is_current": false,
+              "description": null,
+              "key_responsibilities": [],
+              "achievements": []
+            }
+          ],
+          "internships": []
+        },
+        "projects": {
+          "projects": [],
+          "other_projects": []
+        },
+        "interactive_skills": {
+          "technical_skills": [],
+          "tools_platforms": [],
+          "key_questions": [
+            "خودتان را معرفی کنید.",
+            "چرا برای این نقش مناسب هستید؟",
+            "نقاط قوت و ضعف شما چیست؟",
+            "چطور مسئله‌ها را حل می‌کنید؟",
+            "پروژه عمیق یا مهم شما کدام است؟"
+          ],
+          "live_interaction": [
+            "مصاحبه آزمایشی هوش مصنوعی",
+            "پرسش و پاسخ رزومه",
+            "پیشنهادهای بهبود",
+            "بهبود تعاملی رزومه"
+          ]
+        }
+      }
+    }
+  },
+  "asked_deficiencies": [
+    "نام و نام خانوادگی کامل نیست."
+  ],
+  "asked_deficiency_codes": [
+    "personal_info.name"
+  ],
+  "questions": [
+    {
+      "text": "لطفاً نام و نام خانوادگی خود را اعلام کنید.",
+      "question_text": "لطفاً نام و نام خانوادگی خود را اعلام کنید.",
+      "question_code": "personal_info.name",
+      "embedding": null,
+      "answered": false
+    }
+  ],
+  "next_question": "لطفاً نام و نام خانوادگی خود را اعلام کنید.",
+  "messages": [
+    {
+      "role": "user",
+      "content": "سه سال در شرکت نمونه به عنوان مدیر کار کردم"
+    },
+    {
+      "role": "assistant",
+      "content": "لطفاً نام و نام خانوادگی خود را اعلام کنید."
+    }
+  ],
+  "updated_at": "2026-09-12T13:42:08.735750+00:00"
+}

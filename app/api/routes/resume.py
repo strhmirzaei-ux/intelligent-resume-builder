@@ -1,17 +1,18 @@
+from copy import deepcopy
+
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import JSONResponse, Response
 
 from app.core.config import get_settings
 from app.rendering.docx_renderer import DocxResumeRenderer
-from app.rendering.html_renderer import HtmlResumeRenderer
 from app.rendering.pdf_renderer import PdfResumeRenderer
+from app.rendering.resume_content import normalize_profile_url
 from app.schemas.chat import AnalysisResponse, ResumeCreateRequest
 from app.storage.store_factory import build_store
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
 settings = get_settings()
 store = build_store(settings)
-renderer = HtmlResumeRenderer()
 pdf_renderer = PdfResumeRenderer()
 docx_renderer = DocxResumeRenderer()
 
@@ -25,16 +26,28 @@ def get_resume(resume_id: str) -> dict:
 
 
 @router.get("/{resume_id}/json")
-def export_resume_json(resume_id: str) -> dict:
+def export_resume_json(resume_id: str) -> JSONResponse:
     record = store.get(resume_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Resume not found.")
-    return {
+    resume = deepcopy(record["resume"])
+    contact = resume.get("contact_info") or {}
+    for field, platform in (("linkedin", "linkedin"), ("github", "github")):
+        if contact.get(field):
+            contact[field] = normalize_profile_url(contact[field], platform)
+    payload = {
         "resume_id": resume_id,
-        "resume": record["resume"],
-        "analysis": record["analysis"],
-        "graph": record["analysis"].get("graph"),
+        "resume": resume,
+        "analysis": record.get("analysis", {}),
+        "graph": record.get("analysis", {}).get("graph"),
     }
+    return JSONResponse(
+        content=payload,
+        headers={
+            "Content-Disposition": f'attachment; filename="resume-{resume_id}-latest.json"',
+            "Cache-Control": "no-store, max-age=0",
+        },
+    )
 
 
 @router.post("/{resume_id}/analyze", response_model=AnalysisResponse)
@@ -44,14 +57,6 @@ def analyze_resume(resume_id: str) -> AnalysisResponse:
         raise HTTPException(status_code=404, detail="Resume not found.")
     analysis = record["analysis"]
     return AnalysisResponse(resume_id=resume_id, **analysis)
-
-
-@router.get("/{resume_id}/html", response_class=HTMLResponse)
-def render_resume(resume_id: str) -> HTMLResponse:
-    record = store.get(resume_id)
-    if record is None:
-        raise HTTPException(status_code=404, detail="Resume not found.")
-    return HTMLResponse(renderer.render(record["resume"]))
 
 
 @router.get("/{resume_id}/pdf")

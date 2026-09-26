@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import os
+import re
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +30,10 @@ from app.rendering.resume_content import (
 
 def _shape(value: Any) -> str:
     return get_display(arabic_reshaper.reshape(text(value)))
+
+
+def _is_ltr_contact(value: str) -> bool:
+    return bool(re.match(r"(?:https?://|www\.|[\w.+-]+@)", value, re.IGNORECASE))
 
 
 def _font_path() -> str:
@@ -116,7 +122,13 @@ class PdfResumeRenderer:
         story: list[Any] = [Paragraph(_shape(full_name(resume)), title)]
         contacts = contact_lines(resume)
         if contacts:
-            story.append(Paragraph(_shape(" | ".join(contacts)), contact))
+            # Preserve URL/email character order instead of applying Arabic
+            # shaping and bidi reordering to these left-to-right values.
+            for value in contacts:
+                if _is_ltr_contact(value):
+                    story.append(Paragraph(escape(value), contact))
+                else:
+                    story.append(Paragraph(_shape(value), contact))
 
         def section(label: str) -> None:
             story.extend([Paragraph(_shape(label), heading)])
@@ -126,7 +138,7 @@ class PdfResumeRenderer:
 
         if resume.get("professional_summary"):
             section(LABELS["summary"])
-            story.append(Paragraph(_shape(resume["professional_summary"]), body))
+            story.append(Paragraph(escape(_shape(resume["professional_summary"])), body))
         if resume.get("career_objective"):
             section(LABELS["objective"])
             story.append(Paragraph(_shape(resume["career_objective"]), body))

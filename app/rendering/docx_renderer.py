@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import re
 from typing import Any
 
 from docx import Document
@@ -59,6 +60,21 @@ def _set_rtl_style(style) -> None:
     ppr.append(justification)
 
 
+def _is_ltr_contact(value: str) -> bool:
+    return bool(re.match(r"(?:https?://|www\.|[\w.+-]+@)", value, re.IGNORECASE))
+
+
+def _set_ltr(paragraph) -> None:
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    ppr = paragraph._p.get_or_add_pPr()
+    for tag in ("w:bidi", "w:jc"):
+        for element in ppr.findall(qn(tag)):
+            ppr.remove(element)
+    justification = OxmlElement("w:jc")
+    justification.set(qn("w:val"), "left")
+    ppr.append(justification)
+
+
 class DocxResumeRenderer:
     def render(self, resume: dict[str, Any]) -> bytes:
         document = Document()
@@ -82,10 +98,17 @@ class DocxResumeRenderer:
         _rtl(title)
         contacts = contact_lines(resume)
         if contacts:
-            paragraph = document.add_paragraph(" | ".join(contacts))
-            for run in paragraph.runs:
+            for value in contacts:
+                paragraph = document.add_paragraph()
+                run = paragraph.add_run(value)
                 _set_run(run, 9, False, "52606D")
-            _rtl(paragraph)
+                if _is_ltr_contact(value):
+                    rpr = run._element.get_or_add_rPr()
+                    for element in rpr.findall(qn("w:rtl")):
+                        rpr.remove(element)
+                    _set_ltr(paragraph)
+                else:
+                    _rtl(paragraph)
 
         def heading(label: str) -> None:
             p = document.add_paragraph()

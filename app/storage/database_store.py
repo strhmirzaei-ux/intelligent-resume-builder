@@ -16,6 +16,7 @@ from app.db.models import (
 )
 from app.db.session import Database
 from app.integrations.embedding_service import EmbeddingService
+from app.integrations.faiss_search import search_rows
 
 
 class DatabaseStore:
@@ -232,14 +233,13 @@ class DatabaseStore:
         session_id: str | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
-        """Find stored questions nearest to an embedding using pgvector cosine distance."""
+        """Find the nearest stored questions using the FAISS adapter."""
         with self.database.session() as session:
             query = select(ResumeQuestion).where(ResumeQuestion.embedding.is_not(None))
             if session_id:
                 query = query.where(ResumeQuestion.session_id == session_id)
-            rows = session.scalars(
-                query.order_by(ResumeQuestion.embedding.cosine_distance(embedding)).limit(limit)
-            ).all()
+            rows = session.scalars(query).all()
+            ranked = search_rows(rows, embedding, limit)
             return [
                 {
                     "question_text": row.question_text,
@@ -247,7 +247,7 @@ class DatabaseStore:
                     "embedding": row.embedding,
                     "answered": row.answered,
                 }
-                for row in rows
+                for row, _score in ranked
             ]
 
     def search_entities(
@@ -261,9 +261,8 @@ class DatabaseStore:
             query = select(ResumeEntity).where(ResumeEntity.embedding.is_not(None))
             if session_id:
                 query = query.where(ResumeEntity.session_id == session_id)
-            rows = session.scalars(
-                query.order_by(ResumeEntity.embedding.cosine_distance(embedding)).limit(limit)
-            ).all()
+            rows = session.scalars(query).all()
+            ranked = search_rows(rows, embedding, limit)
             return [
                 {
                     "entity_type": row.entity_type,
@@ -271,7 +270,7 @@ class DatabaseStore:
                     "entity_data": row.entity_data,
                     "embedding": row.embedding,
                 }
-                for row in rows
+                for row, _score in ranked
             ]
 
     def search_messages(
@@ -285,14 +284,13 @@ class DatabaseStore:
             query = select(ChatMessage).where(ChatMessage.embedding.is_not(None))
             if session_id:
                 query = query.where(ChatMessage.session_id == session_id)
-            rows = session.scalars(
-                query.order_by(ChatMessage.embedding.cosine_distance(embedding)).limit(limit)
-            ).all()
+            rows = session.scalars(query).all()
+            ranked = search_rows(rows, embedding, limit)
             return [
                 {
                     "role": row.role,
                     "content": row.content,
                     "embedding": row.embedding,
                 }
-                for row in rows
+                for row, _score in ranked
             ]
