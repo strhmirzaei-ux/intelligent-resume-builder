@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import get_settings
-from app.integrations.llm_client import GeminiAIStudioClient, LLMClientError
+from app.integrations.llm_client import GeminiAIStudioClient, LLMClientError, OpenAICompatibleClient
 from app.modules.extraction.llm_extractor import LLMExtractionError, ResumeLLMExtractor
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.pipeline_service import ResumePipelineService
@@ -13,16 +13,24 @@ from app.storage.store_factory import build_store
 router = APIRouter(prefix="/chat", tags=["chat"])
 settings = get_settings()
 
-llm = (
-    GeminiAIStudioClient(
+if settings.llm_api_key and settings.llm_base_url:
+    llm = OpenAICompatibleClient(
+        api_key=settings.llm_api_key,
+        base_url=settings.llm_base_url,
+        model=settings.llm_model,
+        timeout=settings.llm_timeout_seconds,
+        max_output_tokens=settings.llm_max_output_tokens,
+        max_network_retries=settings.llm_network_retries,
+    )
+elif settings.llm_api_key:
+    llm = GeminiAIStudioClient(
         api_key=settings.llm_api_key,
         model=settings.llm_model,
         timeout=settings.llm_timeout_seconds,
         max_output_tokens=settings.llm_max_output_tokens,
     )
-    if settings.llm_api_key
-    else None
-)
+else:
+    llm = None
 
 pipeline = ResumePipelineService(
     extractor=ResumeLLMExtractor(llm=llm),

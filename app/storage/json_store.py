@@ -6,6 +6,8 @@ from pathlib import Path
 from threading import Lock
 from typing import Any
 
+from app.storage.utils import migrate_json_record
+
 
 class JsonStore:
     def __init__(self, root: str = "data/sessions") -> None:
@@ -23,7 +25,7 @@ class JsonStore:
         if not path.exists():
             return None
         with self._lock, path.open("r", encoding="utf-8") as file:
-            value = json.load(file)
+            value = migrate_json_record(json.load(file))
         if max_age_seconds is not None and value.get("updated_at"):
             updated_at = datetime.fromisoformat(value["updated_at"])
             age = (datetime.now(UTC) - updated_at).total_seconds()
@@ -34,6 +36,9 @@ class JsonStore:
 
     def put(self, key: str, value: dict[str, Any]) -> None:
         value = dict(value)
+        value.setdefault("conversation_summary", "")
+        value.setdefault("suppressed_facts", [])
+        value.setdefault("operation_history", [])
         value["updated_at"] = datetime.now(UTC).isoformat()
         path = self.root / f"{key}.json"
         temporary = path.with_suffix(".tmp")

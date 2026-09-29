@@ -1,7 +1,7 @@
 """Persist question targets for backend parity.
 
 Revision ID: 003_storage_contract
-Revises: 002_embeddings
+Revises: 002_pgvector_embeddings
 """
 
 import sqlalchemy as sa
@@ -9,7 +9,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = "003_storage_contract"
-down_revision = "002_embeddings"
+down_revision = "002_pgvector_embeddings"
 branch_labels = None
 depends_on = None
 

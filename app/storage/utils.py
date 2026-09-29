@@ -89,6 +89,9 @@ def migrate_json_record(value: dict[str, Any]) -> dict[str, Any]:
             if isinstance(question, dict):
                 question.setdefault("target_entity", None)
         version = 2
+    value.setdefault("conversation_summary", "")
+    value.setdefault("suppressed_facts", [])
+    value.setdefault("operation_history", [])
     value["schema_version"] = max(version, STORAGE_SCHEMA_VERSION)
     value["messages"] = deduplicate_messages(value.get("messages", []))
     return value

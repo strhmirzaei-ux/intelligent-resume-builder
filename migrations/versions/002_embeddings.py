@@ -1,6 +1,11 @@
-"""Add JSON-stored embeddings used by the FAISS search adapter.
+"""Add JSONB-stored embeddings used by the FAISS search adapter.
 
-Revision ID: 002_embeddings
+The historical revision id contains ``pgvector`` for compatibility with
+databases created by an older project version. This migration does not enable
+the PostgreSQL pgvector extension or create vector columns; embeddings are
+stored as JSONB and searched through the FAISS adapter.
+
+Revision ID: 002_pgvector_embeddings
 Revises: 001_initial_resume_graph
 """
 
@@ -8,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = "002_embeddings"
+revision = "002_pgvector_embeddings"
 down_revision = "001_initial_resume_graph"
 branch_labels = None
 depends_on = None

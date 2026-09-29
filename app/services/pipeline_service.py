@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from app.core.config import get_settings
 from app.integrations.embedding_service import EmbeddingService
+from app.modules.conversation.unified_agent import UnifiedResumeAgent
 from app.modules.extraction.llm_extractor import ResumeLLMExtractor
 from app.modules.gap_analysis.analyzer import GapAnalyzer
 from app.modules.preprocessing.normalizer import PersianTextNormalizer
@@ -25,12 +26,18 @@ class ResumePipelineService:
         question_generator: QuestionGenerator | None = None,
         embedding_service: EmbeddingService | None = None,
         entity_resolver: EntityResolver | None = None,
+        unified_agent: UnifiedResumeAgent | None = None,
     ) -> None:
         self.extractor = extractor
         self.store = store
         self.normalizer = normalizer or PersianTextNormalizer()
         self.questions = question_generator or QuestionGenerator(
             llm=getattr(extractor, "llm", None)
+        )
+        self.unified_agent = unified_agent or (
+            UnifiedResumeAgent(llm=getattr(extractor, "llm", None))
+            if question_generator is None and getattr(extractor, "llm", None) is not None
+            else None
         )
         self.settings = get_settings()
         self.embedding_service = embedding_service or EmbeddingService()
@@ -41,12 +48,15 @@ class ResumePipelineService:
 
     def process(self, text: str, resume_id: str | None = None) -> dict[str, Any]:
         normalized = self.normalizer.clean_text(text)
-        resume = self.extractor.extract(normalized)
         previous = (
             self.store.get(resume_id, max_age_seconds=self.settings.session_ttl_seconds)
             if resume_id
             else None
         )
+        if self.unified_agent is not None:
+            return self._process_unified(text, normalized, resume_id, previous)
+
+        resume = self.extractor.extract(normalized)
         if previous:
             old_resume = ResumeSchema.model_validate(previous["resume"])
             merged_resume = self.merge_with_entity_resolution(
@@ -159,6 +169,162 @@ class ResumePipelineService:
         }
         self.store.put(resume_id, record)
         return record
+
+    def _process_unified(
+        self,
+        raw_text: str,
+        normalized: str,
+        resume_id: str | None,
+        previous: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        resume_id = resume_id or str(uuid4())
+        current_resume = previous.get("resume", {}) if previous else ResumeSchema().model_dump(mode="json")
+        if previous:
+            current_resume = UnifiedResumeAgent._normalize_resume_payload(
+                UnifiedResumeAgent._unwrap_payload(current_resume)
+            )
+        previous_questions = self._load_question_history(previous)
+        prior_analysis = previous.get("analysis", {}) if previous else {}
+        suppressed_facts = list(previous.get("suppressed_facts", [])) if previous else []
+        recent_messages = (previous.get("messages", []) if previous else [])[-8:]
+        result = self.unified_agent.invoke(
+            user_message=normalized,
+            current_resume=current_resume,
+            conversation_summary=str(previous.get("conversation_summary", "")) if previous else "",
+            recent_messages=recent_messages,
+            previous_questions=previous_questions,
+            deficiencies=list(prior_analysis.get("deficiencies", [])),
+            suppressed_facts=suppressed_facts,
+        )
+
+        base = ResumeSchema.model_validate(current_resume).model_dump(mode="json")
+        extracted = result.extracted_resume
+        if extracted:
+            merged = self.merge_with_entity_resolution(base, extracted)
+            if extracted.get("professional_summary"):
+                merged["professional_summary"] = extracted["professional_summary"]
+        else:
+            merged = base
+        merged = self._apply_operations(merged, result.operations)
+        resume = ResumeSchema.model_validate(merged)
+        resume = self._apply_answer_fallback(resume, previous or {}, normalized)
+
+        conversation_text = self._conversation_context(previous, normalized)
+        analysis = GapAnalyzer(resume, conversation_text).run_analysis()
+        previous_score = float(prior_analysis.get("coverage_score", 0))
+        if analysis["coverage_score"] < previous_score:
+            analysis["coverage_score"] = previous_score
+            if isinstance(analysis.get("graph"), dict):
+                analysis["graph"]["weighted_score"] = previous_score
+
+        history = previous_questions
+        if previous:
+            self._update_question_answers(history, previous, analysis, normalized)
+        deficiency_codes = list(analysis.get("deficiency_codes", []))
+        previous_codes = list(previous.get("asked_deficiency_codes", [])) if previous else []
+        if previous and not previous_codes:
+            previous_codes = self._infer_asked_codes(previous.get("next_question"))
+        blocked_codes = set(previous_codes)
+        blocked_codes.update(
+            str(item["question_code"])
+            for item in history
+            if item.get("question_code") and not item.get("answered", False)
+        )
+        candidate = None
+        if result.next_question and len(history) < self.MAX_SESSION_QUESTIONS:
+            candidate = {
+                "text": result.next_question,
+                "source_deficiency": self._first_unblocked_deficiency(
+                    analysis.get("deficiencies", []), deficiency_codes, blocked_codes
+                ),
+            }
+            candidate = self._select_question(
+                [candidate], deficiency_codes, analysis.get("deficiencies", []), history, blocked_codes
+            )
+        next_code = self._question_code(candidate, deficiency_codes, analysis.get("deficiencies", [])) if candidate else None
+        if candidate:
+            history.append(self._question_record(candidate, next_code))
+
+        messages = list(previous.get("messages", [])) if previous else []
+        messages.append({"role": "user", "content": raw_text})
+        if candidate:
+            messages.append({"role": "assistant", "content": candidate["text"]})
+        record = {
+            "resume_id": resume_id,
+            "raw_text": raw_text,
+            "normalized_text": normalized,
+            "resume": resume.model_dump(mode="json"),
+            "analysis": analysis,
+            "asked_deficiencies": (list(previous.get("asked_deficiencies", [])) if previous else [])
+            + ([candidate["source_deficiency"]] if candidate and candidate.get("source_deficiency") else []),
+            "asked_deficiency_codes": previous_codes + ([next_code] if next_code else []),
+            "questions": history,
+            "next_question": candidate["text"] if candidate else None,
+            "messages": messages,
+            "conversation_summary": result.memory_summary or (previous.get("conversation_summary", "") if previous else ""),
+            "suppressed_facts": suppressed_facts + [
+                str(operation.get("path"))
+                for operation in result.operations
+                if str(operation.get("op", "")).lower() == "remove" and operation.get("path")
+            ],
+            "operation_history": list(previous.get("operation_history", [])) if previous else [],
+        }
+        record["operation_history"].extend(result.operations)
+        self.store.put(resume_id, record)
+        return record
+
+    @staticmethod
+    def _conversation_context(previous: dict[str, Any] | None, normalized: str) -> str:
+        old = previous.get("messages", []) if previous else []
+        return "\n".join([str(item.get("content", "")) for item in old if item.get("role") == "user"] + [normalized])
+
+    @staticmethod
+    def _first_unblocked_deficiency(deficiencies: list[str], codes: list[str], blocked: set[str]) -> str | None:
+        for index, deficiency in enumerate(deficiencies):
+            if index >= len(codes) or codes[index] not in blocked:
+                return deficiency
+        return None
+
+    @staticmethod
+    def _apply_operations(resume: dict[str, Any], operations: list[dict[str, Any]]) -> dict[str, Any]:
+        import copy
+
+        result = copy.deepcopy(resume)
+        for operation in operations:
+            op = str(operation.get("op", "")).lower()
+            path = operation.get("path")
+            if not isinstance(path, str) or not path.startswith("/"):
+                continue
+            parts = [part.replace("~1", "/").replace("~0", "~") for part in path[1:].split("/") if part]
+            if not parts:
+                continue
+            parent: Any = result
+            try:
+                for part in parts[:-1]:
+                    parent = parent[int(part)] if isinstance(parent, list) else parent[part]
+                key = parts[-1]
+                if op in {"add", "replace", "merge"}:
+                    value = operation.get("value")
+                    if op == "merge" and isinstance(parent, dict) and isinstance(parent.get(key), dict) and isinstance(value, dict):
+                        parent[key] = {**parent[key], **value}
+                    elif isinstance(parent, list) and key == "-":
+                        parent.append(value)
+                    elif isinstance(parent, list):
+                        index = int(key)
+                        if op == "add":
+                            parent.insert(index, value)
+                        else:
+                            parent[index] = value
+                    else:
+                        parent[key] = value
+                elif op == "remove":
+                    if isinstance(parent, list):
+                        parent.pop(int(key))
+                    else:
+                        parent.pop(key, None)
+            except (KeyError, IndexError, TypeError, ValueError):
+                continue
+        return result
 
     def _load_question_history(self, previous: dict[str, Any] | None) -> list[dict[str, Any]]:
         if not previous:

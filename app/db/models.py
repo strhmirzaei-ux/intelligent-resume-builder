@@ -45,6 +45,9 @@ class ResumeSession(Base):
     asked_deficiencies: Mapped[list[str]] = mapped_column(JsonType, default=list)
     asked_deficiency_codes: Mapped[list[str]] = mapped_column(JsonType, default=list)
     next_question: Mapped[str | None] = mapped_column(Text)
+    conversation_summary: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    suppressed_facts: Mapped[list[str]] = mapped_column(JsonType, default=list)
+    operation_history: Mapped[list[dict[str, Any]]] = mapped_column(JsonType, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

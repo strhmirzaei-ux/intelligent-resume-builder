@@ -76,6 +76,9 @@ class DatabaseStore:
                 "asked_deficiencies": resume_session.asked_deficiencies or [],
                 "asked_deficiency_codes": resume_session.asked_deficiency_codes or [],
                 "next_question": resume_session.next_question,
+                "conversation_summary": resume_session.conversation_summary or "",
+                "suppressed_facts": resume_session.suppressed_facts or [],
+                "operation_history": resume_session.operation_history or [],
                 "questions": [
                     {
                         "text": question.question_text,
@@ -108,6 +111,9 @@ class DatabaseStore:
             resume_session.asked_deficiencies = value.get("asked_deficiencies", [])
             resume_session.asked_deficiency_codes = value.get("asked_deficiency_codes", [])
             resume_session.next_question = value.get("next_question")
+            resume_session.conversation_summary = value.get("conversation_summary", "")
+            resume_session.suppressed_facts = value.get("suppressed_facts", [])
+            resume_session.operation_history = value.get("operation_history", [])
 
             version_number = (
                 session.scalar(
