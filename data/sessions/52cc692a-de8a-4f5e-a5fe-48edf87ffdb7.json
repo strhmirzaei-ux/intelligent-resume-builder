@@ -1,0 +1,61 @@
+{
+  "resume_id": "52cc692a-de8a-4f5e-a5fe-48edf87ffdb7",
+  "raw_text": "من برنامه‌نویس هستم",
+  "normalized_text": "من برنامه‌نویس هستم",
+  "resume": {
+    "personal_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "first_name": null,
+      "last_name": null,
+      "full_name": null,
+      "birth_date": null,
+      "birth_date_raw": null,
+      "gender": null
+    },
+    "contact_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "email": null,
+      "phone": null,
+      "city": null,
+      "country": null,
+      "linkedin": null,
+      "github": null,
+      "website": null
+    },
+    "professional_summary": null,
+    "work_experiences": [],
+    "educations": [],
+    "skills": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [],
+        "name": "برنامه‌نویس",
+        "level": null
+      }
+    ],
+    "languages": [],
+    "projects": [],
+    "certificates": [],
+    "interests": []
+  },
+  "analysis": {
+    "coverage_score": 15.0,
+    "is_valid": true,
+    "deficiencies": [
+      "نام و نام خانوادگی کامل نیست.",
+      "سطح تسلط بر مهارت «برنامه‌نویس» مشخص نشده است.",
+      "حداقل یکی از راه‌های تماس، مانند ایمیل یا شماره تلفن، لازم است."
+    ],
+    "suggestions": [
+      "لطفاً تکمیل یا بررسی کنید: نام و نام خانوادگی کامل نیست.",
+      "لطفاً تکمیل یا بررسی کنید: سطح تسلط بر مهارت «برنامه‌نویس» مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: حداقل یکی از راه‌های تماس، مانند ایمیل یا شماره تلفن، لازم است."
+    ]
+  },
+  "updated_at": "2026-08-24T12:03:37.163233+00:00"
+}

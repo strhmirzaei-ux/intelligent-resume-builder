@@ -1,0 +1,330 @@
+{
+  "resume_id": "c3393542-1900-46fd-8971-7869ff994f08",
+  "raw_text": "این سابقه کاری نیست!",
+  "normalized_text": "این سابقه کاری نیست!",
+  "resume": {
+    "personal_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "first_name": "ستاره",
+      "last_name": "میرزایی",
+      "full_name": "ستاره میرزایی",
+      "birth_date": null,
+      "birth_date_raw": null,
+      "gender": null
+    },
+    "contact_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "email": null,
+      "phone": null,
+      "city": null,
+      "country": null,
+      "linkedin": null,
+      "github": null,
+      "website": null
+    },
+    "professional_summary": null,
+    "key_strengths": [],
+    "career_objective": null,
+    "work_experiences": [],
+    "internships": [],
+    "educations": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [],
+        "institution_name": null,
+        "degree": null,
+        "field_of_study": null,
+        "start_date": null,
+        "end_date": null,
+        "start_date_raw": null,
+        "end_date_raw": null,
+        "relevant_courses": [],
+        "academic_projects": [],
+        "achievements": []
+      }
+    ],
+    "skills": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [],
+        "name": "...",
+        "level": null
+      }
+    ],
+    "tools_platforms": [],
+    "languages": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [],
+        "name": "...",
+        "level": null
+      }
+    ],
+    "projects": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [],
+        "name": "...",
+        "description": null,
+        "role": null,
+        "problem_statement": null,
+        "tech_stack": [],
+        "key_features": [],
+        "outcomes": [],
+        "url": null,
+        "start_date": null,
+        "end_date": null
+      }
+    ],
+    "other_projects": [],
+    "certificates": [],
+    "interests": []
+  },
+  "analysis": {
+    "coverage_score": 16.03,
+    "is_valid": true,
+    "deficiencies": [
+      "محل سکونت مشخص نشده است.",
+      "حداقل یکی از ایمیل یا شماره تلفن لازم است.",
+      "لینک LinkedIn، GitHub یا وب‌سایت مشخص نشده است.",
+      "خلاصه حرفه‌ای، نقاط قوت یا هدف شغلی وارد نشده است.",
+      "مدرک تحصیلی، رشته و نام دانشگاه یا مؤسسه آموزشی مشخص نشده است.",
+      "دوره‌های مرتبط یا دروس مهم وارد نشده است.",
+      "پروژه‌های دانشگاهی یا دستاوردهای آموزشی وارد نشده است.",
+      "حداقل یک سابقه کاری با نام شرکت و عنوان شغلی لازم است.",
+      "تاریخ یا مدت هر سابقه کاری مشخص نشده است.",
+      "مسئولیت‌ها و وظایف سابقه کاری وارد نشده است.",
+      "دستاوردهای قابل اندازه‌گیری سابقه کاری وارد نشده است.",
+      "مسئله، نقش، فناوری‌ها یا قابلیت‌های پروژه‌ها مشخص نشده است.",
+      "نتایج پروژه یا لینک GitHub و Demo وارد نشده است.",
+      "پروژه‌های شخصی، متن‌باز یا کوچک‌تر وارد نشده است.",
+      "سطح تسلط مهارت‌های فنی مشخص نشده است.",
+      "ابزارها و پلتفرم‌های مورد استفاده وارد نشده‌اند.",
+      "زبان‌های برنامه‌نویسی، فریم‌ورک‌ها یا کتابخانه‌های تخصصی مشخص نشده‌اند."
+    ],
+    "suggestions": [
+      "لطفاً تکمیل یا بررسی کنید: محل سکونت مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: حداقل یکی از ایمیل یا شماره تلفن لازم است.",
+      "لطفاً تکمیل یا بررسی کنید: لینک LinkedIn، GitHub یا وب‌سایت مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: خلاصه حرفه‌ای، نقاط قوت یا هدف شغلی وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: مدرک تحصیلی، رشته و نام دانشگاه یا مؤسسه آموزشی مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: دوره‌های مرتبط یا دروس مهم وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: پروژه‌های دانشگاهی یا دستاوردهای آموزشی وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: حداقل یک سابقه کاری با نام شرکت و عنوان شغلی لازم است.",
+      "لطفاً تکمیل یا بررسی کنید: تاریخ یا مدت هر سابقه کاری مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: مسئولیت‌ها و وظایف سابقه کاری وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: دستاوردهای قابل اندازه‌گیری سابقه کاری وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: مسئله، نقش، فناوری‌ها یا قابلیت‌های پروژه‌ها مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: نتایج پروژه یا لینک GitHub و Demo وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: پروژه‌های شخصی، متن‌باز یا کوچک‌تر وارد نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: سطح تسلط مهارت‌های فنی مشخص نشده است.",
+      "لطفاً تکمیل یا بررسی کنید: ابزارها و پلتفرم‌های مورد استفاده وارد نشده‌اند.",
+      "لطفاً تکمیل یا بررسی کنید: زبان‌های برنامه‌نویسی، فریم‌ورک‌ها یا کتابخانه‌های تخصصی مشخص نشده‌اند."
+    ],
+    "graph": {
+      "nodes": {
+        "personal_info": {
+          "label": "اطلاعات فردی",
+          "weight": 1,
+          "score": 33.33,
+          "filled_fields": 2,
+          "total_fields": 6,
+          "missing_fields": [
+            "محل سکونت مشخص نشده است.",
+            "حداقل یکی از ایمیل یا شماره تلفن لازم است.",
+            "لینک LinkedIn، GitHub یا وب‌سایت مشخص نشده است.",
+            "خلاصه حرفه‌ای، نقاط قوت یا هدف شغلی وارد نشده است."
+          ]
+        },
+        "education": {
+          "label": "تحصیلات",
+          "weight": 2,
+          "score": 0.0,
+          "filled_fields": 0,
+          "total_fields": 3,
+          "missing_fields": [
+            "مدرک تحصیلی، رشته و نام دانشگاه یا مؤسسه آموزشی مشخص نشده است.",
+            "دوره‌های مرتبط یا دروس مهم وارد نشده است.",
+            "پروژه‌های دانشگاهی یا دستاوردهای آموزشی وارد نشده است."
+          ]
+        },
+        "work_experience": {
+          "label": "سابقه کاری",
+          "weight": 3,
+          "score": 0.0,
+          "filled_fields": 0,
+          "total_fields": 4,
+          "missing_fields": [
+            "حداقل یک سابقه کاری با نام شرکت و عنوان شغلی لازم است.",
+            "تاریخ یا مدت هر سابقه کاری مشخص نشده است.",
+            "مسئولیت‌ها و وظایف سابقه کاری وارد نشده است.",
+            "دستاوردهای قابل اندازه‌گیری سابقه کاری وارد نشده است."
+          ]
+        },
+        "projects": {
+          "label": "پروژه‌ها",
+          "weight": 3,
+          "score": 25.0,
+          "filled_fields": 1,
+          "total_fields": 4,
+          "missing_fields": [
+            "مسئله، نقش، فناوری‌ها یا قابلیت‌های پروژه‌ها مشخص نشده است.",
+            "نتایج پروژه یا لینک GitHub و Demo وارد نشده است.",
+            "پروژه‌های شخصی، متن‌باز یا کوچک‌تر وارد نشده است."
+          ]
+        },
+        "interactive_skills": {
+          "label": "مهارت‌ها و تعامل",
+          "weight": 4,
+          "score": 25.0,
+          "filled_fields": 1,
+          "total_fields": 4,
+          "missing_fields": [
+            "سطح تسلط مهارت‌های فنی مشخص نشده است.",
+            "ابزارها و پلتفرم‌های مورد استفاده وارد نشده‌اند.",
+            "زبان‌های برنامه‌نویسی، فریم‌ورک‌ها یا کتابخانه‌های تخصصی مشخص نشده‌اند."
+          ]
+        }
+      },
+      "weights": {
+        "personal_info": 1,
+        "interactive_skills": 4,
+        "projects": 3,
+        "education": 2,
+        "work_experience": 3
+      },
+      "weighted_score": 16.03,
+      "structure": {
+        "personal_info": {
+          "basic_details": {
+            "full_name": "ستاره میرزایی",
+            "first_name": "ستاره",
+            "last_name": "میرزایی",
+            "location": null,
+            "phone": null,
+            "email": null,
+            "linkedin": null,
+            "github": null
+          },
+          "summary": {
+            "professional_summary": null,
+            "key_strengths": [],
+            "career_objective": null
+          },
+          "core_skills": {
+            "skills": [
+              {
+                "status": "unverified",
+                "confidence": null,
+                "evidence": [],
+                "name": "...",
+                "level": null
+              }
+            ],
+            "tools_platforms": []
+          },
+          "additional_info": {
+            "languages": [
+              {
+                "status": "unverified",
+                "confidence": null,
+                "evidence": [],
+                "name": "...",
+                "level": null
+              }
+            ],
+            "certificates": [],
+            "interests": []
+          }
+        },
+        "education": {
+          "degrees": [
+            {
+              "status": "unverified",
+              "confidence": null,
+              "evidence": [],
+              "institution_name": null,
+              "degree": null,
+              "field_of_study": null,
+              "start_date": null,
+              "end_date": null,
+              "start_date_raw": null,
+              "end_date_raw": null,
+              "relevant_courses": [],
+              "academic_projects": [],
+              "achievements": []
+            }
+          ],
+          "relevant_courses": [],
+          "academic_projects": [],
+          "achievements": []
+        },
+        "work_experience": {
+          "experiences": [],
+          "internships": []
+        },
+        "projects": {
+          "projects": [
+            {
+              "status": "unverified",
+              "confidence": null,
+              "evidence": [],
+              "name": "...",
+              "description": null,
+              "role": null,
+              "problem_statement": null,
+              "tech_stack": [],
+              "key_features": [],
+              "outcomes": [],
+              "url": null,
+              "start_date": null,
+              "end_date": null
+            }
+          ],
+          "other_projects": []
+        },
+        "interactive_skills": {
+          "technical_skills": [
+            {
+              "status": "unverified",
+              "confidence": null,
+              "evidence": [],
+              "name": "...",
+              "level": null
+            }
+          ],
+          "tools_platforms": [],
+          "key_questions": [
+            "خودتان را معرفی کنید.",
+            "چرا برای این نقش مناسب هستید؟",
+            "نقاط قوت و ضعف شما چیست؟",
+            "چطور مسئله‌ها را حل می‌کنید؟",
+            "پروژه عمیق یا مهم شما کدام است؟"
+          ],
+          "live_interaction": [
+            "مصاحبه آزمایشی هوش مصنوعی",
+            "پرسش و پاسخ رزومه",
+            "پیشنهادهای بهبود",
+            "بهبود تعاملی رزومه"
+          ]
+        }
+      }
+    }
+  },
+  "asked_deficiencies": [
+    "نام و نام خانوادگی کامل نیست.",
+    "مدرک تحصیلی، رشته و نام دانشگاه یا مؤسسه آموزشی مشخص نشده است.",
+    "پروژه‌های دانشگاهی یا دستاوردهای آموزشی وارد نشده است.",
+    "حداقل یک سابقه کاری با نام شرکت و عنوان شغلی لازم است."
+  ],
+  "next_question": "لطفاً نام شرکت یا سازمان و عنوان شغلی خود را اعلام کنید.",
+  "updated_at": "2026-08-26T10:11:15.006317+00:00"
+}

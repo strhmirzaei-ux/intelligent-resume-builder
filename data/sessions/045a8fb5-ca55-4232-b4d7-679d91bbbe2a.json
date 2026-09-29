@@ -1,0 +1,76 @@
+{
+  "resume_id": "045a8fb5-ca55-4232-b4d7-679d91bbbe2a",
+  "raw_text": "من از سال 1401 کار با پایتون را شروع کردم",
+  "normalized_text": "من از سال ۱۴۰۱ کار با پایتون را شروع کردم",
+  "resume": {
+    "personal_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "first_name": "ستاره",
+      "last_name": "میرزایی",
+      "full_name": "ستاره میرزایی",
+      "birth_date": null,
+      "birth_date_raw": null,
+      "gender": null
+    },
+    "contact_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "email": null,
+      "phone": null,
+      "city": null,
+      "country": null,
+      "linkedin": null,
+      "github": null,
+      "website": null
+    },
+    "professional_summary": null,
+    "work_experiences": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [],
+        "company_name": null,
+        "job_title": null,
+        "start_date": "2022-01-01",
+        "end_date": null,
+        "start_date_raw": null,
+        "end_date_raw": null,
+        "is_current": true,
+        "description": null,
+        "achievements": []
+      }
+    ],
+    "educations": [],
+    "skills": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [],
+        "name": "Python",
+        "level": null
+      }
+    ],
+    "languages": [],
+    "projects": [],
+    "certificates": [],
+    "interests": []
+  },
+  "analysis": {
+    "coverage_score": 25.0,
+    "is_valid": true,
+    "deficiencies": [
+      "Description or achievements are missing for 'work experience'.",
+      "Proficiency level is missing for skill 'Python'.",
+      "At least one contact method is missing."
+    ],
+    "suggestions": [
+      "Complete or verify: Description or achievements are missing for 'work experience'.",
+      "Complete or verify: Proficiency level is missing for skill 'Python'.",
+      "Complete or verify: At least one contact method is missing."
+    ]
+  },
+  "updated_at": "2026-08-24T11:59:11.737277+00:00"
+}

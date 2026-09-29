@@ -1,0 +1,74 @@
+{
+  "resume_id": "bab18715-0381-473e-a27a-e6f57317167c",
+  "raw_text": "سطح زبان انگلیسی من c1 هست",
+  "normalized_text": "سطح زبان انگلیسی من c ۱ هست",
+  "resume": {
+    "personal_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_text": "سلام من ستاره میرزایی هستم",
+          "source_start": null,
+          "source_end": null,
+          "evidence_type": "explicit"
+        }
+      ],
+      "first_name": "ستاره",
+      "last_name": "میرزایی",
+      "full_name": "ستاره میرزایی",
+      "birth_date": null,
+      "birth_date_raw": null,
+      "gender": null
+    },
+    "contact_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [
+        {
+          "source_text": "شماره تلفن من 09188134567 است",
+          "source_start": null,
+          "source_end": null,
+          "evidence_type": "explicit"
+        }
+      ],
+      "email": null,
+      "phone": "09188134567",
+      "city": null,
+      "country": null,
+      "linkedin": null,
+      "github": null,
+      "website": null
+    },
+    "professional_summary": null,
+    "work_experiences": [],
+    "educations": [],
+    "skills": [
+      {
+        "status": "unverified",
+        "confidence": null,
+        "evidence": [
+          {
+            "source_text": "سطح زبان انگلیسی من c ۱ هست",
+            "source_start": null,
+            "source_end": null,
+            "evidence_type": "explicit"
+          }
+        ],
+        "name": "English",
+        "level": "C1"
+      }
+    ],
+    "languages": [],
+    "projects": [],
+    "certificates": [],
+    "interests": []
+  },
+  "analysis": {
+    "coverage_score": 40.0,
+    "is_valid": true,
+    "deficiencies": [],
+    "suggestions": []
+  },
+  "updated_at": "2026-08-25T11:23:10.594244+00:00"
+}

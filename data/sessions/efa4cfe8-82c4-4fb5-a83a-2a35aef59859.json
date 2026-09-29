@@ -1,0 +1,51 @@
+{
+  "resume_id": "efa4cfe8-82c4-4fb5-a83a-2a35aef59859",
+  "raw_text": "سلام",
+  "normalized_text": "سلام",
+  "resume": {
+    "personal_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "first_name": null,
+      "last_name": null,
+      "full_name": null,
+      "birth_date": null,
+      "birth_date_raw": null,
+      "gender": null
+    },
+    "contact_info": {
+      "status": "unverified",
+      "confidence": null,
+      "evidence": [],
+      "email": null,
+      "phone": null,
+      "city": null,
+      "country": null,
+      "linkedin": null,
+      "github": null,
+      "website": null
+    },
+    "professional_summary": null,
+    "work_experiences": [],
+    "educations": [],
+    "skills": [],
+    "languages": [],
+    "projects": [],
+    "certificates": [],
+    "interests": []
+  },
+  "analysis": {
+    "coverage_score": 0.0,
+    "is_valid": true,
+    "deficiencies": [
+      "نام و نام خانوادگی کامل نیست.",
+      "حداقل یکی از راه‌های تماس، مانند ایمیل یا شماره تلفن، لازم است."
+    ],
+    "suggestions": [
+      "لطفاً تکمیل یا بررسی کنید: نام و نام خانوادگی کامل نیست.",
+      "لطفاً تکمیل یا بررسی کنید: حداقل یکی از راه‌های تماس، مانند ایمیل یا شماره تلفن، لازم است."
+    ]
+  },
+  "updated_at": "2026-08-25T11:02:42.012900+00:00"
+}

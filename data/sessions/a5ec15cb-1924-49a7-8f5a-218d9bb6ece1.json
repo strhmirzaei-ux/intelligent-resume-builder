@@ -1,0 +1,51 @@
+{
+  "resume_id": "a5ec15cb-1924-49a7-8f5a-218d9bb6ece1",
+  "raw_text": "?? ?? ??? ????? ?????? ????? ?????? ????.",
+  "normalized_text": "?????????????????????????????????.",
+  "resume": {
+    "personal_info": {
+      "status": "missing",
+      "confidence": null,
+      "evidence": [],
+      "first_name": null,
+      "last_name": null,
+      "full_name": null,
+      "birth_date": null,
+      "birth_date_raw": null,
+      "gender": null
+    },
+    "contact_info": {
+      "status": "missing",
+      "confidence": null,
+      "evidence": [],
+      "email": null,
+      "phone": null,
+      "city": null,
+      "country": null,
+      "linkedin": null,
+      "github": null,
+      "website": null
+    },
+    "professional_summary": null,
+    "work_experiences": [],
+    "educations": [],
+    "skills": [],
+    "languages": [],
+    "projects": [],
+    "certificates": [],
+    "interests": []
+  },
+  "analysis": {
+    "coverage_score": 0.0,
+    "is_valid": true,
+    "deficiencies": [
+      "Full name is incomplete.",
+      "At least one contact method is missing."
+    ],
+    "suggestions": [
+      "Complete or verify: Full name is incomplete.",
+      "Complete or verify: At least one contact method is missing."
+    ]
+  },
+  "updated_at": "2026-08-24T11:36:38.438334+00:00"
+}
