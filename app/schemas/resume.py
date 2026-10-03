@@ -4,7 +4,17 @@ from datetime import date
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator, model_validator
+
+
+def _normalize_url_value(value: Any) -> Any:
+    """Accept common host/path input while keeping Pydantic's URL validation."""
+    if not isinstance(value, str):
+        return value
+    value = value.strip()
+    if value and "://" not in value and not value.startswith(("/", "#")):
+        return f"https://{value}"
+    return value
 
 
 class DataStatus(str, Enum):
@@ -62,6 +72,11 @@ class ContactInfo(SectionBase):
     linkedin: HttpUrl | None = None
     github: HttpUrl | None = None
     website: HttpUrl | None = None
+
+    @field_validator("linkedin", "github", "website", mode="before")
+    @classmethod
+    def normalize_urls(cls, value: Any) -> Any:
+        return _normalize_url_value(value)
 
 
 class WorkExperience(SectionBase):
@@ -127,12 +142,22 @@ class Project(SectionBase):
     start_date: date | None = None
     end_date: date | None = None
 
+    @field_validator("url", mode="before")
+    @classmethod
+    def normalize_url(cls, value: Any) -> Any:
+        return _normalize_url_value(value)
+
 
 class Certificate(SectionBase):
     name: str = Field(min_length=1, max_length=200)
     issuer: str | None = Field(default=None, max_length=200)
     issue_date: date | None = None
     url: HttpUrl | None = None
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def normalize_url(cls, value: Any) -> Any:
+        return _normalize_url_value(value)
 
 
 class ResumeSchema(BaseModel):

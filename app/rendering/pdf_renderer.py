@@ -17,6 +17,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
+from reportlab.pdfbase.pdfmetrics import stringWidth
 
 from app.rendering.resume_content import (
     LABELS,

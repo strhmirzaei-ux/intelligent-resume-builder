@@ -155,11 +155,16 @@ class ResumeLLMExtractor:
             "personal_info",
             "contact_info",
             "professional_summary",
+            "key_strengths",
+            "career_objective",
             "work_experiences",
+            "internships",
             "educations",
             "skills",
+            "tools_platforms",
             "languages",
             "projects",
+            "other_projects",
             "certificates",
             "interests",
         }
@@ -180,8 +185,21 @@ class ResumeLLMExtractor:
             "skills",
             "languages",
             "projects",
+            "other_projects",
             "certificates",
         )
+        section_keys = {
+            "personal_info": {"first_name", "last_name", "full_name", "birth_date", "birth_date_raw", "gender", "status", "confidence", "evidence"},
+            "contact_info": {"email", "phone", "city", "country", "linkedin", "github", "website", "status", "confidence", "evidence"},
+            "work_experiences": {"company_name", "job_title", "duration", "start_date", "end_date", "start_date_raw", "end_date_raw", "is_current", "description", "key_responsibilities", "achievements", "status", "confidence", "evidence"},
+            "internships": {"role", "company_name", "duration", "responsibilities", "key_learnings", "status", "confidence", "evidence"},
+            "educations": {"institution_name", "degree", "field_of_study", "start_date", "end_date", "start_date_raw", "end_date_raw", "relevant_courses", "academic_projects", "achievements", "status", "confidence", "evidence"},
+            "skills": skill_keys,
+            "languages": skill_keys,
+            "projects": {"name", "description", "role", "problem_statement", "tech_stack", "key_features", "outcomes", "url", "start_date", "end_date", "status", "confidence", "evidence"},
+            "other_projects": {"name", "description", "role", "problem_statement", "tech_stack", "key_features", "outcomes", "url", "start_date", "end_date", "status", "confidence", "evidence"},
+            "certificates": {"name", "issuer", "issue_date", "url", "status", "confidence", "evidence"},
+        }
 
         def normalize_section(section: Any, section_name: str) -> dict[str, Any]:
             if isinstance(section, str):
@@ -191,7 +209,10 @@ class ResumeLLMExtractor:
                 }
             if not isinstance(section, dict):
                 return {}
-            normalized = dict(section)
+            normalized = {
+                key: value for key, value in section.items()
+                if key in section_keys.get(section_name, set(section))
+            }
             if section_name == "contact_info":
                 for key in ("github", "linkedin", "website"):
                     value = normalized.get(key)
@@ -240,7 +261,7 @@ class ResumeLLMExtractor:
                     else evidence
                     for evidence in normalized["evidence"]
                 ]
-            if normalized.get("status") not in valid_statuses:
+            if not isinstance(normalized.get("status"), str) or normalized.get("status") not in valid_statuses:
                 normalized["status"] = "unverified"
             for raw_date_key in ("birth_date_raw", "start_date_raw", "end_date_raw"):
                 raw_date = normalized.get(raw_date_key)
@@ -256,7 +277,10 @@ class ResumeLLMExtractor:
                 ]
             elif section_name in data:
                 data[section_name] = normalize_section(value, section_name)
-        return data
+        return {
+            key: value for key, value in data.items()
+            if key in top_level_keys
+        }
 
     def _call_llm(self, prompt: str) -> str:
         if self.llm is None:
